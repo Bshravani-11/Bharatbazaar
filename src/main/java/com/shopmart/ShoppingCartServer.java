@@ -1,0 +1,817 @@
+package com.shopmart;
+
+import com.shopmart.model.Cart;
+import com.shopmart.model.CartItem;
+import com.shopmart.model.Product;
+import com.shopmart.service.FirebaseService;
+import com.shopmart.service.ProductService;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+
+/**
+ * ShoppingCartServer - Enterprise Java E-Commerce Platform
+ * 
+ * B.Tech 2nd Year Assignment
+ * 
+ * Features:
+ *   - Clean, professional design with SVG iconography (no emojis)
+ *   - Indian E-Commerce standard: INR (₹) currency, 5% GST, ₹499 free shipping threshold
+ *   - Exclusive Cash on Delivery (COD) payment mechanism
+ *   - Real-time Order Management System (OMS) backed by Firebase Realtime Database
+ *   - Built using standard Java 17 library (no external framework overhead)
+ */
+public class ShoppingCartServer {
+
+    private static final int PORT = 8080;
+    private final ProductService productService;
+    private final Cart cart;
+    private final FirebaseService firebaseService;
+
+    // ==========================================
+    //  PROFESSIONAL SVG ICONS
+    // ==========================================
+
+    private static final String SVG_CART = 
+        "<svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:4px;\">" +
+        "<path d=\"M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z\"></path><line x1=\"3\" y1=\"6\" x2=\"21\" y2=\"6\"></line><path d=\"M16 10a4 4 0 0 1-8 0\"></path></svg>";
+
+    private static final String SVG_SEARCH = 
+        "<svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;\">" +
+        "<circle cx=\"11\" cy=\"11\" r=\"8\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
+
+    private static final String SVG_ORDERS = 
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:4px;\">" +
+        "<path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"></path><polyline points=\"14 2 14 8 20 8\"></polyline><line x1=\"16\" y1=\"13\" x2=\"8\" y2=\"13\"></line><line x1=\"16\" y1=\"17\" x2=\"8\" y2=\"17\"></line></svg>";
+
+    private static final String SVG_TRUCK = 
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:6px;\">" +
+        "<rect x=\"1\" y=\"3\" width=\"15\" height=\"13\"></rect><polygon points=\"16 8 20 8 23 11 23 16 16 16 16 8\"></polygon><circle cx=\"5.5\" cy=\"18.5\" r=\"2.5\"></circle><circle cx=\"18.5\" cy=\"18.5\" r=\"2.5\"></circle></svg>";
+
+    private static final String SVG_CASH = 
+        "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:6px;\">" +
+        "<rect x=\"2\" y=\"6\" width=\"20\" height=\"12\" rx=\"2\"></rect><circle cx=\"12\" cy=\"12\" r=\"2\"></circle><path d=\"M6 12h.01M18 12h.01\"></path></svg>";
+
+    private static final String SVG_CHECK = 
+        "<svg width=\"36\" height=\"36\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#16a34a\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" +
+        "<polyline points=\"20 6 9 17 4 12\"></polyline></svg>";
+
+    private static final String SVG_DATABASE = 
+        "<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:4px;\">" +
+        "<ellipse cx=\"12\" cy=\"5\" rx=\"9\" ry=\"3\"></ellipse><path d=\"M21 12c0 1.66-4 3-9 3s-9-1.34-9-3\"></path><path d=\"M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5\"></path></svg>";
+
+    private static final String SVG_TRASH = 
+        "<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:2px;\">" +
+        "<polyline points=\"3 6 5 6 21 6\"></polyline><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"></path></svg>";
+
+    public ShoppingCartServer() {
+        this.productService = new ProductService();
+        this.cart = new Cart();
+        this.firebaseService = new FirebaseService();
+    }
+
+    public static void main(String[] args) throws IOException {
+        ShoppingCartServer app = new ShoppingCartServer();
+        app.start();
+    }
+
+    public void start() throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
+
+        // Register URL Routes
+        server.createContext("/", new HomeHandler());
+        server.createContext("/cart", new CartHandler());
+        server.createContext("/cart/add", new AddToCartHandler());
+        server.createContext("/cart/increase", new IncreaseQuantityHandler());
+        server.createContext("/cart/decrease", new DecreaseQuantityHandler());
+        server.createContext("/cart/remove", new RemoveFromCartHandler());
+        server.createContext("/cart/clear", new ClearCartHandler());
+        server.createContext("/checkout", new CheckoutHandler());
+        server.createContext("/checkout/place-order", new PlaceOrderHandler());
+        server.createContext("/orders", new OrdersHandler());
+        server.createContext("/css/styles.css", new CssHandler());
+
+        server.setExecutor(null);
+        server.start();
+
+        System.out.println("==========================================================");
+        System.out.println("  BharatBazaar E-Commerce Platform Online");
+        System.out.println("  Payment Method: Cash on Delivery (COD) Only");
+        System.out.println("  Cloud Database: " + firebaseService.getDatabaseUrl());
+        System.out.println("  Storefront URL: http://localhost:8080");
+        System.out.println("  Order Management: http://localhost:8080/orders");
+        System.out.println("==========================================================");
+    }
+
+    // ==========================================
+    //  HTTP HANDLERS
+    // ==========================================
+
+    private class HomeHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!exchange.getRequestURI().getPath().equals("/")) {
+                sendResponse(exchange, 404, "Page Not Found", "text/plain");
+                return;
+            }
+
+            Map<String, String> params = parseQueryParams(exchange.getRequestURI().getRawQuery());
+            String category = params.get("category");
+            String query = params.get("query");
+
+            List<Product> products;
+            if (query != null && !query.trim().isEmpty()) {
+                products = productService.searchProducts(query);
+            } else if (category != null && !category.equalsIgnoreCase("all")) {
+                products = productService.getProductsByCategory(category);
+            } else {
+                products = productService.getAllProducts();
+            }
+
+            String html = renderHomePage(products, category, query);
+            sendResponse(exchange, 200, html, "text/html; charset=UTF-8");
+        }
+    }
+
+    private class CartHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String html = renderCartPage();
+            sendResponse(exchange, 200, html, "text/html; charset=UTF-8");
+        }
+    }
+
+    private class AddToCartHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                Map<String, String> params = parseQueryParams(exchange.getRequestURI().getRawQuery());
+                String idStr = params.get("id");
+                if (idStr == null) {
+                    Map<String, String> form = parseFormData(exchange);
+                    idStr = form.get("id");
+                }
+
+                if (idStr != null) {
+                    try {
+                        Long productId = Long.parseLong(idStr);
+                        Product product = productService.getProductById(productId);
+                        if (product != null && product.isInStock()) {
+                            cart.addItem(product);
+                            System.out.println("[Cart] Added item: " + product.getName() + " | Total items: " + cart.getTotalItems());
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+                sendRedirect(exchange, "/");
+            } else {
+                sendRedirect(exchange, "/");
+            }
+        }
+    }
+
+    private class IncreaseQuantityHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                Map<String, String> params = parseQueryParams(exchange.getRequestURI().getRawQuery());
+                String idStr = params.get("id");
+                if (idStr != null) {
+                    try {
+                        Long productId = Long.parseLong(idStr);
+                        CartItem item = cart.findItem(productId);
+                        if (item != null) {
+                            item.incrementQuantity();
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            sendRedirect(exchange, "/cart");
+        }
+    }
+
+    private class DecreaseQuantityHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                Map<String, String> params = parseQueryParams(exchange.getRequestURI().getRawQuery());
+                String idStr = params.get("id");
+                if (idStr != null) {
+                    try {
+                        Long productId = Long.parseLong(idStr);
+                        CartItem item = cart.findItem(productId);
+                        if (item != null) {
+                            if (item.getQuantity() <= 1) {
+                                cart.removeItem(productId);
+                            } else {
+                                item.decrementQuantity();
+                            }
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            sendRedirect(exchange, "/cart");
+        }
+    }
+
+    private class RemoveFromCartHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                Map<String, String> params = parseQueryParams(exchange.getRequestURI().getRawQuery());
+                String idStr = params.get("id");
+                if (idStr != null) {
+                    try {
+                        Long productId = Long.parseLong(idStr);
+                        cart.removeItem(productId);
+                        System.out.println("[Cart] Removed item ID: " + productId);
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+            sendRedirect(exchange, "/cart");
+        }
+    }
+
+    private class ClearCartHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                cart.clear();
+                System.out.println("[Cart] Cleared all items");
+            }
+            sendRedirect(exchange, "/cart");
+        }
+    }
+
+    private class CheckoutHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (cart.isEmpty()) {
+                sendRedirect(exchange, "/");
+                return;
+            }
+            String html = renderCheckoutPage();
+            sendResponse(exchange, 200, html, "text/html; charset=UTF-8");
+        }
+    }
+
+    private class PlaceOrderHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                Map<String, String> form = parseFormData(exchange);
+                String fullName = form.getOrDefault("fullName", "Customer");
+                String email = form.getOrDefault("email", "customer@example.in");
+                String phone = form.getOrDefault("phone", "+91 98765 43210");
+                String address = form.getOrDefault("address", "N/A");
+                String city = form.getOrDefault("city", "Bengaluru");
+                String state = form.getOrDefault("state", "Karnataka");
+                String pincode = form.getOrDefault("pincode", "560001");
+                String fullAddress = address + ", " + city + ", " + state + " - " + pincode;
+
+                List<CartItem> orderedItems = new ArrayList<>();
+                for (CartItem item : cart.getItems()) {
+                    orderedItems.add(new CartItem(item.getProduct(), item.getQuantity()));
+                }
+                double finalTotal = cart.getTotal();
+
+                String orderNumber = "IND-" + String.format("%06d", (int)(Math.random() * 900000 + 100000));
+                cart.clear();
+
+                // Sync to Firebase Cloud Database
+                firebaseService.saveOrder(orderNumber, fullName, phone, email, fullAddress, orderedItems, finalTotal);
+
+                System.out.println("=========================================");
+                System.out.println("  ORDER REGISTERED: " + orderNumber);
+                System.out.println("  Customer: " + fullName + " (" + email + ")");
+                System.out.println("  Phone: " + phone);
+                System.out.println("  Address: " + fullAddress);
+                System.out.println("  Payment Method: Cash on Delivery (COD) Only");
+                System.out.println("  Amount: Rs. " + String.format("%.2f", finalTotal));
+                System.out.println("  Storage: Firebase Realtime Database");
+                System.out.println("=========================================");
+
+                String html = renderConfirmationPage(orderNumber, fullName, email, phone, fullAddress, orderedItems, finalTotal);
+                sendResponse(exchange, 200, html, "text/html; charset=UTF-8");
+            } else {
+                sendRedirect(exchange, "/");
+            }
+        }
+    }
+
+    private class OrdersHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String html = renderOrdersPage();
+            sendResponse(exchange, 200, html, "text/html; charset=UTF-8");
+        }
+    }
+
+    private class CssHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            Path cssPath = Paths.get("src", "main", "resources", "static", "css", "styles.css");
+            if (Files.exists(cssPath)) {
+                byte[] cssBytes = Files.readAllBytes(cssPath);
+                exchange.getResponseHeaders().set("Content-Type", "text/css; charset=UTF-8");
+                exchange.sendResponseHeaders(200, cssBytes.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(cssBytes);
+                }
+            } else {
+                sendResponse(exchange, 404, "CSS Not Found", "text/plain");
+            }
+        }
+    }
+
+    // ==========================================
+    //  PROFESSIONAL HTML TEMPLATES
+    // ==========================================
+
+    private String renderHeader() {
+        return "<header class=\"header\">\n" +
+               "    <div class=\"header-content\">\n" +
+               "        <a href=\"/\" class=\"logo\">" + SVG_CART + " Bharat<strong>Bazaar</strong></a>\n" +
+               "        <div class=\"header-right\">\n" +
+               "            <form action=\"/\" method=\"get\" class=\"search-form\">\n" +
+               "                <input type=\"text\" name=\"query\" placeholder=\"Search catalog by brand or product...\" class=\"search-input\">\n" +
+               "                <button type=\"submit\" class=\"search-btn\" title=\"Search\">" + SVG_SEARCH + "</button>\n" +
+               "            </form>\n" +
+               "            <a href=\"/orders\" class=\"nav-link\">" + SVG_ORDERS + " Order History</a>\n" +
+               "            <a href=\"/cart\" class=\"cart-link\">\n" +
+               "                " + SVG_CART + " Cart\n" +
+               "                <span class=\"badge\">" + cart.getTotalItems() + "</span>\n" +
+               "            </a>\n" +
+               "        </div>\n" +
+               "    </div>\n" +
+               "</header>\n";
+    }
+
+    private String renderFooter() {
+        return "<footer class=\"footer\">\n" +
+               "    <div class=\"footer-content\">\n" +
+               "        <div class=\"footer-section\">\n" +
+               "            <h4>BharatBazaar Retail</h4>\n" +
+               "            <p>Certified online marketplace for electronics, apparel, and domestic essentials across India.</p>\n" +
+               "            <p style=\"margin-top:10px; font-size:0.8rem; color:#94a3b8;\">" + SVG_DATABASE + " Backend Integrated with Firebase Cloud Database</p>\n" +
+               "        </div>\n" +
+               "        <div class=\"footer-section\">\n" +
+               "            <h4>Quick Navigation</h4>\n" +
+               "            <ul>\n" +
+               "                <li><a href=\"/\">Product Catalog</a></li>\n" +
+               "                <li><a href=\"/cart\">Shopping Cart</a></li>\n" +
+               "                <li><a href=\"/orders\">Order Management</a></li>\n" +
+               "                <li><a href=\"/checkout\">Checkout</a></li>\n" +
+               "            </ul>\n" +
+               "        </div>\n" +
+               "        <div class=\"footer-section\">\n" +
+               "            <h4>Customer Support</h4>\n" +
+               "            <p>Email: support@bharatbazaar.in</p>\n" +
+               "            <p>Toll Free: 1800-456-7890</p>\n" +
+               "            <p>Corporate Office: Bengaluru, Karnataka - 560001</p>\n" +
+               "        </div>\n" +
+               "    </div>\n" +
+               "    <div class=\"footer-bottom\">\n" +
+               "        <p>&copy; 2026 BharatBazaar Retail Private Limited. All Rights Reserved. | B.Tech Academic Project</p>\n" +
+               "    </div>\n" +
+               "</footer>\n";
+    }
+
+    private String renderHomePage(List<Product> products, String selectedCategory, String searchQuery) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
+          .append("<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
+          .append("<title>BharatBazaar - Certified Online Store</title>\n")
+          .append("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\">\n")
+          .append("<link href=\"/css/styles.css\" rel=\"stylesheet\">\n")
+          .append("</head>\n<body>\n");
+
+        sb.append(renderHeader());
+
+        // Hero Banner
+        sb.append("<section class=\"hero\">\n")
+          .append("    <h1>Quality Products, Delivered Across India</h1>\n")
+          .append("    <p>Discover top consumer electronics, lifestyle apparel, and household essentials at genuine prices.</p>\n")
+          .append("    <p style=\"font-size:0.9rem; margin-top:-10px; margin-bottom:20px; color:#cbd5e1;\">")
+          .append(SVG_TRUCK).append("Free standard shipping on orders over &#8377;499 | ").append(SVG_CASH).append("Cash on Delivery (COD) Only</p>\n")
+          .append("    <div style=\"display:flex; justify-content:center; gap:12px; flex-wrap:wrap;\">\n")
+          .append("        <a href=\"#products\" class=\"hero-btn\">View Catalog</a>\n")
+          .append("        <a href=\"/orders\" class=\"hero-btn\" style=\"background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3);\">")
+          .append(SVG_ORDERS).append(" Order Records</a>\n")
+          .append("    </div>\n")
+          .append("</section>\n");
+
+        // Category Filter Buttons
+        sb.append("<section class=\"categories\">\n");
+        boolean isAllActive = selectedCategory == null || selectedCategory.equalsIgnoreCase("all");
+        sb.append("    <a href=\"/?category=all\" class=\"category-btn ").append(isAllActive ? "active" : "").append("\">All Products</a>\n");
+
+        for (String cat : productService.getAllCategories()) {
+            boolean isActive = selectedCategory != null && selectedCategory.equalsIgnoreCase(cat);
+            sb.append("    <a href=\"/?category=").append(cat).append("\" class=\"category-btn ")
+              .append(isActive ? "active" : "").append("\">").append(cat).append("</a>\n");
+        }
+        sb.append("</section>\n");
+
+        // Product Grid
+        sb.append("<main class=\"products-section\" id=\"products\">\n")
+          .append("    <h2 class=\"section-title\">Featured Catalog</h2>\n");
+
+        if (products.isEmpty()) {
+            sb.append("    <div class=\"no-products\">\n")
+              .append("        <p>No products matched your search criteria. Please adjust your keywords.</p>\n")
+              .append("        <a href=\"/\" class=\"hero-btn\">View Full Catalog</a>\n")
+              .append("    </div>\n");
+        } else {
+            sb.append("    <div class=\"products-grid\">\n");
+            for (Product p : products) {
+                sb.append("        <div class=\"product-card\">\n")
+                  .append("            <div class=\"product-image\">\n")
+                  .append("                <img src=\"").append(p.getImageUrl()).append("\" alt=\"").append(p.getName()).append("\">\n");
+
+                if (p.isInStock()) {
+                    sb.append("                <span class=\"stock-badge in-stock\">In Stock</span>\n");
+                } else {
+                    sb.append("                <span class=\"stock-badge out-of-stock\">Out of Stock</span>\n");
+                }
+
+                sb.append("            </div>\n")
+                  .append("            <div class=\"product-info\">\n")
+                  .append("                <span class=\"product-category\">").append(p.getCategory()).append("</span>\n")
+                  .append("                <h3 class=\"product-name\">").append(p.getName()).append("</h3>\n")
+                  .append("                <p class=\"product-desc\">").append(p.getDescription()).append("</p>\n")
+                  .append("                <div class=\"product-footer\">\n")
+                  .append("                    <span class=\"product-price\">&#8377;").append(String.format("%,.0f", p.getPrice())).append("</span>\n");
+
+                if (p.isInStock()) {
+                    sb.append("                    <form action=\"/cart/add?id=").append(p.getId()).append("\" method=\"post\">\n")
+                      .append("                        <button type=\"submit\" class=\"add-to-cart-btn\">Add to Cart</button>\n")
+                      .append("                    </form>\n");
+                } else {
+                    sb.append("                    <button class=\"add-to-cart-btn disabled\" disabled>Unavailable</button>\n");
+                }
+
+                sb.append("                </div>\n")
+                  .append("            </div>\n")
+                  .append("        </div>\n");
+            }
+            sb.append("    </div>\n");
+        }
+
+        sb.append("</main>\n");
+        sb.append(renderFooter());
+        sb.append("</body>\n</html>");
+        return sb.toString();
+    }
+
+    private String renderCartPage() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
+          .append("<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
+          .append("<title>BharatBazaar - Shopping Cart</title>\n")
+          .append("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\">\n")
+          .append("<link href=\"/css/styles.css\" rel=\"stylesheet\">\n")
+          .append("</head>\n<body>\n");
+
+        sb.append(renderHeader());
+
+        sb.append("<main class=\"cart-page\">\n")
+          .append("    <h1 class=\"page-title\">").append(SVG_CART).append(" Shopping Cart</h1>\n");
+
+        if (cart.isEmpty()) {
+            sb.append("    <div class=\"empty-cart\">\n")
+              .append("        <div class=\"empty-cart-icon\">").append(SVG_CART).append("</div>\n")
+              .append("        <h2>Your cart is currently empty</h2>\n")
+              .append("        <p>Explore our catalog to add items to your shopping cart.</p>\n")
+              .append("        <a href=\"/\" class=\"hero-btn\">Browse Catalog</a>\n")
+              .append("    </div>\n");
+        } else {
+            sb.append("    <div class=\"cart-container\">\n");
+
+            // Shipping Progress Bar
+            if (cart.getAmountToFreeShipping() > 0) {
+                double pct = Math.min(100.0, (cart.getSubtotal() / 499.0) * 100.0);
+                sb.append("        <div class=\"shipping-bar\">\n")
+                  .append("            <p>").append(SVG_TRUCK).append("Add items worth <strong>&#8377;")
+                  .append(String.format("%,.0f", cart.getAmountToFreeShipping()))
+                  .append("</strong> more to qualify for <strong>Free Delivery</strong>.</p>\n")
+                  .append("            <div class=\"progress-bar\"><div class=\"progress-fill\" style=\"width: ")
+                  .append(String.format("%.1f", pct)).append("%\"></div></div>\n")
+                  .append("        </div>\n");
+            } else {
+                sb.append("        <div class=\"shipping-bar free\">\n")
+                  .append("            <p>").append(SVG_TRUCK).append("Eligible for <strong>Free Standard Delivery</strong> across India.</p>\n")
+                  .append("        </div>\n");
+            }
+
+            // Cart Table
+            sb.append("        <div class=\"cart-table\">\n")
+              .append("            <div class=\"cart-table-header\">\n")
+              .append("                <span>Item Description</span><span>Unit Price</span><span>Quantity</span><span>Subtotal</span><span>Action</span>\n")
+              .append("            </div>\n");
+
+            for (CartItem item : cart.getItems()) {
+                Product p = item.getProduct();
+                sb.append("            <div class=\"cart-item\">\n")
+                  .append("                <div class=\"col-product cart-item-product\">\n")
+                  .append("                    <img src=\"").append(p.getImageUrl()).append("\" class=\"cart-item-img\" alt=\"").append(p.getName()).append("\">\n")
+                  .append("                    <div>\n")
+                  .append("                        <h4>").append(p.getName()).append("</h4>\n")
+                  .append("                        <span class=\"cart-item-category\">").append(p.getCategory()).append("</span>\n")
+                  .append("                    </div>\n")
+                  .append("                </div>\n")
+                  .append("                <div class=\"col-price\">&#8377;").append(String.format("%,.0f", p.getPrice())).append("</div>\n")
+                  .append("                <div class=\"col-quantity quantity-controls\">\n")
+                  .append("                    <form action=\"/cart/decrease?id=").append(p.getId()).append("\" method=\"post\" style=\"display:inline\">\n")
+                  .append("                        <button type=\"submit\" class=\"qty-btn\" title=\"Decrease\">&#8722;</button>\n")
+                  .append("                    </form>\n")
+                  .append("                    <span class=\"qty-value\">").append(item.getQuantity()).append("</span>\n")
+                  .append("                    <form action=\"/cart/increase?id=").append(p.getId()).append("\" method=\"post\" style=\"display:inline\">\n")
+                  .append("                        <button type=\"submit\" class=\"qty-btn\" title=\"Increase\">+</button>\n")
+                  .append("                    </form>\n")
+                  .append("                </div>\n")
+                  .append("                <div class=\"col-subtotal\"><strong>&#8377;").append(String.format("%,.0f", item.getSubtotal())).append("</strong></div>\n")
+                  .append("                <div class=\"col-action\">\n")
+                  .append("                    <form action=\"/cart/remove?id=").append(p.getId()).append("\" method=\"post\">\n")
+                  .append("                        <button type=\"submit\" class=\"remove-btn\">").append(SVG_TRASH).append(" Remove</button>\n")
+                  .append("                    </form>\n")
+                  .append("                </div>\n")
+                  .append("            </div>\n");
+            }
+            sb.append("        </div>\n");
+
+            // Summary
+            sb.append("        <div class=\"cart-summary\">\n")
+              .append("            <h3>Price Summary</h3>\n")
+              .append("            <div class=\"summary-row\"><span>Items Subtotal</span><span>&#8377;").append(String.format("%,.2f", cart.getSubtotal())).append("</span></div>\n");
+
+            if (cart.getShipping() == 0) {
+                sb.append("            <div class=\"summary-row\"><span>Delivery Charges</span><span class=\"free-text\">FREE</span></div>\n");
+            } else {
+                sb.append("            <div class=\"summary-row\"><span>Delivery Charges</span><span>&#8377;").append(String.format("%,.2f", cart.getShipping())).append("</span></div>\n");
+            }
+
+            sb.append("            <div class=\"summary-row\"><span>Applicable GST (5%)</span><span>&#8377;").append(String.format("%,.2f", cart.getTax())).append("</span></div>\n")
+              .append("            <div class=\"summary-row total-row\"><span>Total Payable</span><span>&#8377;").append(String.format("%,.2f", cart.getTotal())).append("</span></div>\n")
+              .append("            <div class=\"cart-actions\">\n")
+              .append("                <form action=\"/cart/clear\" method=\"post\">\n")
+              .append("                    <button type=\"submit\" class=\"clear-cart-btn\">Clear Cart</button>\n")
+              .append("                </form>\n")
+              .append("                <a href=\"/checkout\" class=\"checkout-btn\">Proceed to Checkout &#8594;</a>\n")
+              .append("            </div>\n")
+              .append("        </div>\n")
+              .append("    </div>\n");
+        }
+
+        sb.append("</main>\n");
+        sb.append(renderFooter());
+        sb.append("</body>\n</html>");
+        return sb.toString();
+    }
+
+    private String renderCheckoutPage() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
+          .append("<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
+          .append("<title>BharatBazaar - Checkout</title>\n")
+          .append("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\">\n")
+          .append("<link href=\"/css/styles.css\" rel=\"stylesheet\">\n")
+          .append("</head>\n<body>\n");
+
+        sb.append(renderHeader());
+
+        sb.append("<main class=\"checkout-page\">\n")
+          .append("    <h1 class=\"page-title\">Order Checkout</h1>\n")
+          .append("    <div class=\"checkout-container\">\n")
+          .append("        <div class=\"checkout-form\">\n")
+          .append("            <h2>1. Shipping Address (India)</h2>\n")
+          .append("            <form action=\"/checkout/place-order\" method=\"post\">\n")
+          .append("                <div class=\"form-group\"><label for=\"fullName\">Full Name *</label><input type=\"text\" id=\"fullName\" name=\"fullName\" required placeholder=\"e.g. Rahul Sharma\"></div>\n")
+          .append("                <div class=\"form-group\"><label for=\"phone\">Mobile Number (+91) *</label><input type=\"tel\" id=\"phone\" name=\"phone\" required placeholder=\"e.g. 98765 43210\"></div>\n")
+          .append("                <div class=\"form-group\"><label for=\"email\">Email Address *</label><input type=\"email\" id=\"email\" name=\"email\" required placeholder=\"e.g. rahul.sharma@example.com\"></div>\n")
+          .append("                <div class=\"form-group\"><label for=\"address\">Flat, House No., Apartment & Street *</label><input type=\"text\" id=\"address\" name=\"address\" required placeholder=\"e.g. Flat 402, Sai Residency, MG Road\"></div>\n")
+          .append("                <div class=\"form-group\"><label for=\"city\">City / District *</label><input type=\"text\" id=\"city\" name=\"city\" required placeholder=\"e.g. Bengaluru\"></div>\n")
+          .append("                <div class=\"form-group\"><label for=\"state\">State *</label><input type=\"text\" id=\"state\" name=\"state\" required placeholder=\"e.g. Karnataka\"></div>\n")
+          .append("                <div class=\"form-group\"><label for=\"pincode\">Postal PIN Code (6 digits) *</label><input type=\"text\" id=\"pincode\" name=\"pincode\" required placeholder=\"e.g. 560001\" maxlength=\"6\"></div>\n")
+          .append("                <h2 style=\"margin-top:24px; font-size:1.15rem;\">2. Payment Method</h2>\n")
+          .append("                <div style=\"background:#f8fafc; border:2px solid #2563eb; padding:16px; border-radius:10px; margin-bottom:20px;\">\n")
+          .append("                    <div style=\"display:flex; align-items:center; gap:10px;\">\n")
+          .append("                        <input type=\"radio\" id=\"cod\" name=\"paymentMethod\" value=\"Cash on Delivery\" checked style=\"accent-color:#2563eb; width:18px; height:18px; cursor:pointer;\">\n")
+          .append("                        <label for=\"cod\" style=\"font-size:1rem; font-weight:700; color:#1e293b; cursor:pointer;\">\n")
+          .append("                            ").append(SVG_CASH).append("Cash on Delivery (COD) Only\n")
+          .append("                        </label>\n")
+          .append("                    </div>\n")
+          .append("                    <p style=\"font-size:0.85rem; color:#475569; margin-top:8px; line-height:1.5;\">\n")
+          .append("                        Payment will be collected in cash by the courier agent upon doorstep package delivery. No advance online payment required.\n")
+          .append("                    </p>\n")
+          .append("                </div>\n")
+          .append("                <button type=\"submit\" class=\"place-order-btn\">Confirm Order (Cash on Delivery)</button>\n")
+          .append("            </form>\n")
+          .append("        </div>\n")
+          .append("        <div class=\"checkout-summary\">\n")
+          .append("            <h2>Order Summary</h2>\n")
+          .append("            <div class=\"checkout-items\">\n");
+
+        for (CartItem item : cart.getItems()) {
+            sb.append("                <div class=\"checkout-item\">\n")
+              .append("                    <img src=\"").append(item.getProduct().getImageUrl()).append("\" class=\"checkout-item-img\">\n")
+              .append("                    <div class=\"checkout-item-info\"><h4>").append(item.getProduct().getName()).append("</h4><span>Qty: ").append(item.getQuantity()).append("</span></div>\n")
+              .append("                    <span class=\"checkout-item-price\">&#8377;").append(String.format("%,.0f", item.getSubtotal())).append("</span>\n")
+              .append("                </div>\n");
+        }
+
+        sb.append("            </div>\n")
+          .append("            <div class=\"checkout-totals\">\n")
+          .append("                <div class=\"summary-row\"><span>Items Subtotal</span><span>&#8377;").append(String.format("%,.2f", cart.getSubtotal())).append("</span></div>\n")
+          .append("                <div class=\"summary-row\"><span>Delivery Charges</span><span>").append(cart.getShipping() == 0 ? "FREE" : "&#8377;" + String.format("%,.2f", cart.getShipping())).append("</span></div>\n")
+          .append("                <div class=\"summary-row\"><span>GST (5%)</span><span>&#8377;").append(String.format("%,.2f", cart.getTax())).append("</span></div>\n")
+          .append("                <div class=\"summary-row total-row\"><span>Total Amount</span><span>&#8377;").append(String.format("%,.2f", cart.getTotal())).append("</span></div>\n")
+          .append("            </div>\n")
+          .append("        </div>\n")
+          .append("    </div>\n")
+          .append("</main>\n");
+
+        sb.append(renderFooter());
+        sb.append("</body>\n</html>");
+        return sb.toString();
+    }
+
+    private String renderConfirmationPage(String orderNumber, String name, String email, String phone, String address, List<CartItem> items, double total) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
+          .append("<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
+          .append("<title>BharatBazaar - Order Receipt</title>\n")
+          .append("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\">\n")
+          .append("<link href=\"/css/styles.css\" rel=\"stylesheet\">\n")
+          .append("</head>\n<body>\n");
+
+        sb.append(renderHeader());
+
+        sb.append("<main class=\"confirmation-page\">\n")
+          .append("    <div class=\"confirmation-card\">\n")
+          .append("        <div class=\"success-icon\">").append(SVG_CHECK).append("</div>\n")
+          .append("        <h1>Order Placed Successfully</h1>\n")
+          .append("        <p class=\"order-number\">Reference ID: <strong>").append(orderNumber).append("</strong></p>\n")
+          .append("        <div style=\"background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:8px 16px; border-radius:6px; font-size:0.8rem; font-weight:600; display:inline-flex; align-items:center; gap:6px; margin-bottom:12px;\">")
+          .append(SVG_DATABASE).append(" Record Synchronized to Firebase Database</div>\n")
+          .append("        <p class=\"thank-you\">Thank you for your order. A confirmation notice has been generated and your parcel is in preparation.</p>\n")
+          .append("        <div class=\"order-details\">\n")
+          .append("            <h3>Shipping & Payment Information</h3>\n")
+          .append("            <div class=\"detail-row\"><span>Customer Name:</span><span>").append(name).append("</span></div>\n")
+          .append("            <div class=\"detail-row\"><span>Contact Number:</span><span>").append(phone).append("</span></div>\n")
+          .append("            <div class=\"detail-row\"><span>Email Address:</span><span>").append(email).append("</span></div>\n")
+          .append("            <div class=\"detail-row\"><span>Shipping Address:</span><span>").append(address).append("</span></div>\n")
+          .append("            <div class=\"detail-row\"><span>Payment Method:</span><span style=\"color:#2563eb; font-weight:700;\">").append(SVG_CASH).append(" Cash on Delivery (COD)</span></div>\n")
+          .append("            <div class=\"detail-row\"><span>Payment Status:</span><span style=\"color:#d97706; font-weight:600;\">Pending (To be collected upon delivery)</span></div>\n")
+          .append("            <div class=\"detail-row\"><span>Delivery Estimate:</span><span style=\"color:#16a34a; font-weight:600;\">2 - 4 Business Days</span></div>\n")
+          .append("            <h3 style=\"margin-top: 20px;\">Order Items</h3>\n");
+
+        for (CartItem item : items) {
+            sb.append("            <div class=\"order-item\"><span>")
+              .append(item.getProduct().getName()).append(" &times; ").append(item.getQuantity())
+              .append("</span><span>&#8377;").append(String.format("%,.0f", item.getSubtotal())).append("</span></div>\n");
+        }
+
+        sb.append("            <div class=\"order-total\"><span>Total Payable Amount (Cash):</span><span>&#8377;").append(String.format("%,.2f", total)).append("</span></div>\n")
+          .append("        </div>\n")
+          .append("        <div style=\"display:flex; justify-content:center; gap:12px; margin-top:24px; flex-wrap:wrap;\">\n")
+          .append("            <a href=\"/\" class=\"hero-btn\">Continue Shopping</a>\n")
+          .append("            <a href=\"/orders\" class=\"hero-btn\" style=\"background:#1e293b; color:white;\">").append(SVG_ORDERS).append(" View Order Records</a>\n")
+          .append("        </div>\n")
+          .append("    </div>\n")
+          .append("</main>\n");
+
+        sb.append(renderFooter());
+        sb.append("</body>\n</html>");
+        return sb.toString();
+    }
+
+    /**
+     * Professional Order Management System (OMS)
+     */
+    private String renderOrdersPage() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
+          .append("<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
+          .append("<title>BharatBazaar - Order Management System</title>\n")
+          .append("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\">\n")
+          .append("<link href=\"/css/styles.css\" rel=\"stylesheet\">\n")
+          .append("</head>\n<body>\n");
+
+        sb.append(renderHeader());
+
+        sb.append("<main class=\"cart-page\" style=\"max-width:1100px;\">\n")
+          .append("    <div style=\"display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:24px;\">\n")
+          .append("        <div>\n")
+          .append("            <h1 class=\"page-title\" style=\"margin-bottom:4px;\">Order Management System</h1>\n")
+          .append("            <p style=\"color:#64748b; font-size:0.9rem;\">Centralized order records synchronized with Firebase Realtime Database</p>\n")
+          .append("        </div>\n")
+          .append("        <div style=\"background:#f8fafc; border:1px solid #e2e8f0; padding:8px 14px; border-radius:6px; font-size:0.8rem; color:#475569;\">\n")
+          .append("            ").append(SVG_DATABASE).append("<strong>Database Endpoint:</strong> ").append(firebaseService.getDatabaseUrl()).append("\n")
+          .append("        </div>\n")
+          .append("    </div>\n");
+
+        List<FirebaseService.OrderRecord> records = firebaseService.getOrderRecords();
+
+        if (records.isEmpty()) {
+            sb.append("    <div class=\"empty-cart\">\n")
+              .append("        <div class=\"empty-cart-icon\">").append(SVG_ORDERS).append("</div>\n")
+              .append("        <h2>No order records found</h2>\n")
+              .append("        <p>Orders placed through the checkout system will appear here in real time.</p>\n")
+              .append("        <a href=\"/\" class=\"hero-btn\">Browse Catalog</a>\n")
+              .append("    </div>\n");
+        } else {
+            sb.append("    <div class=\"cart-table\">\n")
+              .append("        <div class=\"cart-table-header\" style=\"grid-template-columns: 1.2fr 1.5fr 1.8fr 1fr 1fr;\">\n")
+              .append("            <span>Reference ID</span><span>Customer</span><span>Delivery Location</span><span>Amount (COD)</span><span>Database Status</span>\n")
+              .append("        </div>\n");
+
+            for (FirebaseService.OrderRecord r : records) {
+                sb.append("        <div class=\"cart-item\" style=\"grid-template-columns: 1.2fr 1.5fr 1.8fr 1fr 1fr; align-items:center;\">\n")
+                  .append("            <div>\n")
+                  .append("                <strong style=\"color:#2563eb;\">").append(r.orderNumber).append("</strong>\n")
+                  .append("                <div style=\"font-size:0.75rem; color:#64748b;\">").append(r.timestamp).append("</div>\n")
+                  .append("            </div>\n")
+                  .append("            <div>\n")
+                  .append("                <strong>").append(r.customerName).append("</strong>\n")
+                  .append("                <div style=\"font-size:0.8rem; color:#475569;\">").append(r.phone).append("</div>\n")
+                  .append("            </div>\n")
+                  .append("            <div style=\"font-size:0.85rem; color:#334155; line-height:1.4;\">").append(r.address).append("</div>\n")
+                  .append("            <div>\n")
+                  .append("                <strong style=\"font-size:1.05rem; color:#1e293b;\">&#8377;").append(r.total).append("</strong>\n")
+                  .append("                <div style=\"font-size:0.75rem; color:#16a34a; font-weight:600;\">Cash on Delivery</div>\n")
+                  .append("            </div>\n")
+                  .append("            <div>\n")
+                  .append("                <span style=\"background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-size:0.75rem; font-weight:600; padding:4px 10px; border-radius:4px; display:inline-block;\">").append(r.syncStatus).append("</span>\n")
+                  .append("            </div>\n")
+                  .append("        </div>\n");
+            }
+
+            sb.append("    </div>\n");
+            sb.append("    <div style=\"text-align:center; margin-top:24px;\"><a href=\"/\" class=\"hero-btn\">Return to Storefront</a></div>\n");
+        }
+
+        sb.append("</main>\n");
+        sb.append(renderFooter());
+        sb.append("</body>\n</html>");
+        return sb.toString();
+    }
+
+    // ==========================================
+    //  HTTP HELPER METHODS
+    // ==========================================
+
+    private void sendResponse(HttpExchange exchange, int statusCode, String response, String contentType) throws IOException {
+        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        exchange.sendResponseHeaders(statusCode, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+
+    private void sendRedirect(HttpExchange exchange, String location) throws IOException {
+        exchange.getResponseHeaders().set("Location", location);
+        exchange.sendResponseHeaders(303, -1);
+        exchange.close();
+    }
+
+    private Map<String, String> parseQueryParams(String query) {
+        Map<String, String> params = new HashMap<>();
+        if (query == null || query.isEmpty()) return params;
+
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+            String[] kv = pair.split("=", 2);
+            if (kv.length == 2) {
+                try {
+                    params.put(URLDecoder.decode(kv[0], StandardCharsets.UTF_8),
+                               URLDecoder.decode(kv[1], StandardCharsets.UTF_8));
+                } catch (Exception ignored) {}
+            }
+        }
+        return params;
+    }
+
+    private Map<String, String> parseFormData(HttpExchange exchange) throws IOException {
+        Map<String, String> formData = new HashMap<>();
+        try (InputStream is = exchange.getRequestBody();
+             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            formData.putAll(parseQueryParams(sb.toString()));
+        }
+        return formData;
+    }
+}

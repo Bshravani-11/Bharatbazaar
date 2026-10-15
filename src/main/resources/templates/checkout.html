@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopMart - Checkout</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link th:href="@{/css/styles.css}" rel="stylesheet">
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+    <div class="header-content">
+        <a href="/" class="logo">&#128722; Shop<strong>Mart</strong></a>
+        <div class="header-right">
+            <a href="/cart" class="nav-link">&#8592; Back to Cart</a>
+        </div>
+    </div>
+</header>
+
+<!-- ===== CHECKOUT PAGE ===== -->
+<main class="checkout-page">
+    <h1 class="page-title">&#128179; Checkout</h1>
+
+    <div class="checkout-container">
+        <!-- Checkout Form -->
+        <div class="checkout-form">
+            <h2>Shipping Details</h2>
+            <form action="/checkout/place-order" method="post">
+
+                <div class="form-group">
+                    <label for="fullName">Full Name *</label>
+                    <input type="text" id="fullName" name="fullName" required placeholder="John Doe">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required placeholder="john@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number *</label>
+                    <input type="tel" id="phone" name="phone" required placeholder="+1 (555) 123-4567">
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Street Address *</label>
+                    <input type="text" id="address" name="address" required placeholder="123 Main Street">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="city">City *</label>
+                        <input type="text" id="city" name="city" required placeholder="Bengaluru">
+                    </div>
+                </div>
+
+                <h2 style="margin-top:24px; font-size:1.15rem;">Payment Method</h2>
+                <div style="background:#f0fdf4; border:2px solid #16a34a; padding:16px; border-radius:10px; margin-bottom:18px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="radio" id="cod" name="paymentMethod" value="Cash on Delivery" checked style="accent-color:#16a34a; width:20px; height:20px; cursor:pointer;">
+                        <label for="cod" style="font-size:1.05rem; font-weight:700; color:#15803d; cursor:pointer;">
+                            &#128181; Cash on Delivery (COD) Only
+                        </label>
+                    </div>
+                    <p style="font-size:0.85rem; color:#334155; margin-top:8px; line-height:1.4;">
+                        &#9989; Pay with cash to the delivery executive when your parcel arrives at your doorstep. No online payment required!
+                    </p>
+                </div>
+
+                <button type="submit" class="place-order-btn" style="background-color:#16a34a;">&#128666; Confirm Order (Cash on Delivery)</button>
+            </form>
+        </div>
+
+        <!-- Order Summary Sidebar -->
+        <div class="checkout-summary">
+            <h2>Order Summary</h2>
+
+            <div class="checkout-items">
+                <div th:each="item : ${cart.items}" class="checkout-item">
+                    <img th:src="${item.product.imageUrl}" th:alt="${item.product.name}" class="checkout-item-img">
+                    <div class="checkout-item-info">
+                        <h4 th:text="${item.product.name}">Product</h4>
+                        <span th:text="'Qty: ' + ${item.quantity}">Qty: 1</span>
+                    </div>
+                    <span class="checkout-item-price"
+                          th:text="'$' + ${#numbers.formatDecimal(item.subtotal, 1, 2)}">$0.00</span>
+                </div>
+            </div>
+
+            <div class="checkout-totals">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span th:text="'$' + ${#numbers.formatDecimal(cart.subtotal, 1, 2)}">$0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Shipping</span>
+                    <span th:if="${cart.shipping == 0}" class="free-text">FREE</span>
+                    <span th:unless="${cart.shipping == 0}" th:text="'$' + ${#numbers.formatDecimal(cart.shipping, 1, 2)}">$5.99</span>
+                </div>
+                <div class="summary-row">
+                    <span>Tax (8%)</span>
+                    <span th:text="'$' + ${#numbers.formatDecimal(cart.tax, 1, 2)}">$0.00</span>
+                </div>
+                <div class="summary-row total-row">
+                    <span>Total</span>
+                    <span th:text="'$' + ${#numbers.formatDecimal(cart.total, 1, 2)}">$0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+    <div class="footer-bottom">
+        <p>&copy; 2026 ShopMart. All rights reserved. | B.Tech Project</p>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Compiled class files
+bin/
+target/
+*.class
+
+# IDE and Editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.DS_Store
+
+# Log files
+*.log

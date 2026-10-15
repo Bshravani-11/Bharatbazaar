@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopMart - Your Favourite Online Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link th:href="@{/css/styles.css}" rel="stylesheet">
+</head>
+<body>
+
+<!-- ===== HEADER / NAVIGATION BAR ===== -->
+<header class="header">
+    <div class="header-content">
+        <a href="/" class="logo">&#128722; Shop<strong>Mart</strong></a>
+
+        <div class="header-right">
+            <!-- Search Bar -->
+            <form action="/" method="get" class="search-form">
+                <input type="text" name="query" placeholder="Search products..."
+                       th:value="${searchQuery}" class="search-input">
+                <button type="submit" class="search-btn">&#128269;</button>
+            </form>
+
+            <!-- Cart Button -->
+            <a href="/cart" class="cart-link">
+                &#128722; Cart
+                <span class="badge" th:text="${cartCount}">0</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- ===== HERO BANNER ===== -->
+<section class="hero">
+    <h1>Welcome to ShopMart</h1>
+    <p>Discover amazing products at great prices. Quality you can trust!</p>
+    <a href="#products" class="hero-btn">Shop Now</a>
+</section>
+
+<!-- ===== CATEGORY FILTER BUTTONS ===== -->
+<section class="categories">
+    <a th:href="@{/(category='all')}"
+       th:classappend="${selectedCategory == null || selectedCategory == 'all'} ? 'active' : ''"
+       class="category-btn">
+        &#127912; All
+    </a>
+    <a th:each="cat : ${categories}"
+       th:href="@{/(category=${cat})}"
+       th:classappend="${selectedCategory == cat} ? 'active' : ''"
+       th:text="${cat}"
+       class="category-btn">
+    </a>
+</section>
+
+<!-- ===== PRODUCT GRID ===== -->
+<main class="products-section" id="products">
+    <h2 class="section-title">Our Products</h2>
+
+    <!-- Show message if no products found -->
+    <div th:if="${#lists.isEmpty(products)}" class="no-products">
+        <p>&#128533; No products found. Try a different search or category.</p>
+        <a href="/" class="hero-btn">View All Products</a>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="products-grid">
+        <div th:each="product : ${products}" class="product-card">
+            <!-- Product Image -->
+            <div class="product-image">
+                <img th:src="${product.imageUrl}" th:alt="${product.name}">
+                <span class="stock-badge in-stock" th:if="${product.inStock()}">In Stock</span>
+                <span class="stock-badge out-of-stock" th:unless="${product.inStock()}">Out of Stock</span>
+            </div>
+
+            <!-- Product Info -->
+            <div class="product-info">
+                <span class="product-category" th:text="${product.category}">Category</span>
+                <h3 class="product-name" th:text="${product.name}">Product Name</h3>
+                <p class="product-desc" th:text="${product.description}">Description</p>
+                <div class="product-footer">
+                    <span class="product-price" th:text="'$' + ${#numbers.formatDecimal(product.price, 1, 2)}">$0.00</span>
+
+                    <!-- Add to Cart Form -->
+                    <form th:action="@{/cart/add/{id}(id=${product.id})}" method="post"
+                          th:if="${product.inStock()}">
+                        <button type="submit" class="add-to-cart-btn">Add to Cart</button>
+                    </form>
+                    <button class="add-to-cart-btn disabled" th:unless="${product.inStock()}" disabled>
+                        Out of Stock
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <h4>&#128722; ShopMart</h4>
+            <p>Your one-stop shop for quality products at affordable prices.</p>
+        </div>
+        <div class="footer-section">
+            <h4>Quick Links</h4>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/cart">Cart</a></li>
+                <li><a href="/checkout">Checkout</a></li>
+            </ul>
+        </div>
+        <div class="footer-section">
+            <h4>Contact Us</h4>
+            <p>&#128231; support@shopmart.com</p>
+            <p>&#128222; +1 (555) 123-4567</p>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2026 ShopMart. All rights reserved. | B.Tech Project</p>
+    </div>
+</footer>
+
+</body>
+</html>

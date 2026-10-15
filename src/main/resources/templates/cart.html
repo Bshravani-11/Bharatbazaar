@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopMart - Your Cart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link th:href="@{/css/styles.css}" rel="stylesheet">
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+    <div class="header-content">
+        <a href="/" class="logo">&#128722; Shop<strong>Mart</strong></a>
+        <div class="header-right">
+            <a href="/" class="nav-link">&#127968; Continue Shopping</a>
+            <a href="/cart" class="cart-link">
+                &#128722; Cart
+                <span class="badge" th:text="${cartCount}">0</span>
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- ===== CART PAGE ===== -->
+<main class="cart-page">
+    <h1 class="page-title">&#128722; Shopping Cart</h1>
+
+    <!-- ===== EMPTY CART MESSAGE ===== -->
+    <div th:if="${cart.isEmpty()}" class="empty-cart">
+        <div class="empty-cart-icon">&#128722;</div>
+        <h2>Your cart is empty</h2>
+        <p>Looks like you haven't added any products yet.</p>
+        <a href="/" class="hero-btn">Start Shopping</a>
+    </div>
+
+    <!-- ===== CART WITH ITEMS ===== -->
+    <div th:unless="${cart.isEmpty()}" class="cart-container">
+
+        <!-- Free Shipping Progress Bar -->
+        <div class="shipping-bar" th:if="${cart.amountToFreeShipping > 0}">
+            <p>&#128666; Add <strong th:text="'$' + ${#numbers.formatDecimal(cart.amountToFreeShipping, 1, 2)}"></strong> more for FREE shipping!</p>
+            <div class="progress-bar">
+                <div class="progress-fill"
+                     th:style="'width:' + ${(cart.subtotal / 50.0) * 100} + '%'"></div>
+            </div>
+        </div>
+        <div class="shipping-bar free" th:if="${cart.amountToFreeShipping == 0}">
+            <p>&#127881; You've unlocked FREE shipping!</p>
+        </div>
+
+        <!-- Cart Items Table -->
+        <div class="cart-table">
+            <!-- Table Header -->
+            <div class="cart-table-header">
+                <span class="col-product">Product</span>
+                <span class="col-price">Price</span>
+                <span class="col-quantity">Quantity</span>
+                <span class="col-subtotal">Subtotal</span>
+                <span class="col-action">Action</span>
+            </div>
+
+            <!-- Cart Items -->
+            <div th:each="item : ${cart.items}" class="cart-item">
+                <!-- Product Info -->
+                <div class="col-product cart-item-product">
+                    <img th:src="${item.product.imageUrl}" th:alt="${item.product.name}" class="cart-item-img">
+                    <div>
+                        <h4 th:text="${item.product.name}">Product Name</h4>
+                        <span class="cart-item-category" th:text="${item.product.category}">Category</span>
+                    </div>
+                </div>
+
+                <!-- Price -->
+                <div class="col-price">
+                    <span th:text="'$' + ${#numbers.formatDecimal(item.product.price, 1, 2)}">$0.00</span>
+                </div>
+
+                <!-- Quantity Controls -->
+                <div class="col-quantity quantity-controls">
+                    <form th:action="@{/cart/decrease/{id}(id=${item.product.id})}" method="post" style="display:inline">
+                        <button type="submit" class="qty-btn">&#8722;</button>
+                    </form>
+                    <span class="qty-value" th:text="${item.quantity}">1</span>
+                    <form th:action="@{/cart/increase/{id}(id=${item.product.id})}" method="post" style="display:inline">
+                        <button type="submit" class="qty-btn">+</button>
+                    </form>
+                </div>
+
+                <!-- Subtotal -->
+                <div class="col-subtotal">
+                    <strong th:text="'$' + ${#numbers.formatDecimal(item.subtotal, 1, 2)}">$0.00</strong>
+                </div>
+
+                <!-- Remove Button -->
+                <div class="col-action">
+                    <form th:action="@{/cart/remove/{id}(id=${item.product.id})}" method="post">
+                        <button type="submit" class="remove-btn">&#10005; Remove</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Summary -->
+        <div class="cart-summary">
+            <h3>Order Summary</h3>
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span th:text="'$' + ${#numbers.formatDecimal(cart.subtotal, 1, 2)}">$0.00</span>
+            </div>
+            <div class="summary-row">
+                <span>Shipping</span>
+                <span th:if="${cart.shipping == 0}" class="free-text">FREE</span>
+                <span th:unless="${cart.shipping == 0}" th:text="'$' + ${#numbers.formatDecimal(cart.shipping, 1, 2)}">$5.99</span>
+            </div>
+            <div class="summary-row">
+                <span>Tax (8%)</span>
+                <span th:text="'$' + ${#numbers.formatDecimal(cart.tax, 1, 2)}">$0.00</span>
+            </div>
+            <div class="summary-row total-row">
+                <span>Total</span>
+                <span th:text="'$' + ${#numbers.formatDecimal(cart.total, 1, 2)}">$0.00</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="cart-actions">
+                <form action="/cart/clear" method="post">
+                    <button type="submit" class="clear-cart-btn">&#128465; Clear Cart</button>
+                </form>
+                <a href="/checkout" class="checkout-btn">Proceed to Checkout &#8594;</a>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+    <div class="footer-bottom">
+        <p>&copy; 2026 ShopMart. All rights reserved. | B.Tech Project</p>
+    </div>
+</footer>
+
+</body>
+</html>

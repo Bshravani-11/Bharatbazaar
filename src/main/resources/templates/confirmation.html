@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopMart - Order Confirmed!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link th:href="@{/css/styles.css}" rel="stylesheet">
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+    <div class="header-content">
+        <a href="/" class="logo">&#128722; Shop<strong>Mart</strong></a>
+        <div class="header-right">
+            <a href="/" class="nav-link">&#127968; Home</a>
+        </div>
+    </div>
+</header>
+
+<!-- ===== ORDER CONFIRMATION ===== -->
+<main class="confirmation-page">
+    <div class="confirmation-card">
+        <!-- Success Icon -->
+        <div class="success-icon">&#10004;</div>
+
+        <h1>Order Confirmed! &#127881;</h1>
+        <p class="order-number">Order Number: <strong th:text="${orderNumber}">SM-000000</strong></p>
+        <p class="thank-you">Thank you for shopping with ShopMart! Your order has been placed successfully.</p>
+
+        <!-- Order Details -->
+        <div class="order-details">
+            <h3>Order Details</h3>
+
+            <div class="detail-row">
+                <span>Customer:</span>
+                <span th:text="${fullName}">John Doe</span>
+            </div>
+            <div class="detail-row">
+                <span>Email:</span>
+                <span th:text="${email}">john@example.com</span>
+            </div>
+            <div class="detail-row">
+                <span>Phone:</span>
+                <span th:text="${phone}">+1 555-1234</span>
+            </div>
+            <div class="detail-row">
+                <span>Shipping To:</span>
+                <span th:text="${address}">123 Main St, New York</span>
+            </div>
+            <div class="detail-row">
+                <span>Payment Mode:</span>
+                <span style="color:#16a34a; font-weight:700;">&#128181; Cash on Delivery (COD) Only</span>
+            </div>
+            <div class="detail-row">
+                <span>Payment Status:</span>
+                <span style="color:#d97706; font-weight:600;">Pay in Cash upon Delivery</span>
+            </div>
+
+            <!-- Items Ordered -->
+            <h3 style="margin-top: 24px;">Items Ordered</h3>
+            <div th:each="item : ${cart.items}" class="order-item">
+                <span th:text="${item.product.name} + ' × ' + ${item.quantity}">Product × 1</span>
+                <span th:text="'₹' + ${#numbers.formatDecimal(item.subtotal, 1, 2)}">₹0.00</span>
+            </div>
+
+            <!-- Total -->
+            <div class="order-total">
+                <span>Cash to Pay on Delivery:</span>
+                <span th:text="'₹' + ${#numbers.formatDecimal(cart.total, 1, 2)}">₹0.00</span>
+            </div>
+        </div>
+
+        <a href="/" class="hero-btn" style="margin-top: 24px;">Continue Shopping</a>
+    </div>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+    <div class="footer-bottom">
+        <p>&copy; 2026 ShopMart. All rights reserved. | B.Tech Project</p>
+    </div>
+</footer>
+
+</body>
+</html>
