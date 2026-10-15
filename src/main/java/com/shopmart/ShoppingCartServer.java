@@ -645,20 +645,8 @@ public class ShoppingCartServer {
         sb.append("<section class=\"hero\">\n")
           .append("    <h1>Quality Products, Delivered Across India</h1>\n")
           .append("    <p>Discover top consumer electronics, lifestyle apparel, and household essentials at genuine prices.</p>\n")
-          .append("    <p style=\"font-size:0.9rem; margin-top:-10px; margin-bottom:20px; color:#cbd5e1;\">")
+          .append("    <p style=\"font-size:0.9rem; margin-top:-10px; margin-bottom:0; color:#cbd5e1;\">")
           .append(SVG_TRUCK).append("Free standard shipping on orders over &#8377;499 | ").append(SVG_CASH).append("Cash on Delivery (COD) Only</p>\n")
-          .append("    <div style=\"display:flex; justify-content:center; gap:12px; flex-wrap:wrap;\">\n")
-          .append("        <a href=\"#products\" class=\"hero-btn\">View Catalog</a>\n");
-
-        if (user == null) {
-            sb.append("        <a href=\"/login\" class=\"hero-btn\" style=\"background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3);\">")
-              .append(SVG_USER).append(" Customer Sign In</a>\n");
-        } else {
-            sb.append("        <a href=\"/orders\" class=\"hero-btn\" style=\"background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3);\">")
-              .append(SVG_ORDERS).append(" Order Records</a>\n");
-        }
-
-        sb.append("    </div>\n")
           .append("</section>\n");
 
         // Category Filter Buttons
