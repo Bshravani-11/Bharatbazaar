@@ -64,13 +64,14 @@ button {
     box-shadow: var(--shadow);
 }
 
-.header-content {
+.header-content, .header-container {
     max-width: 1200px;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
     height: 64px;
+    width: 100%;
 }
 
 .logo {
@@ -80,16 +81,19 @@ button {
     display: flex;
     align-items: center;
     gap: 4px;
+    text-decoration: none;
+    flex-shrink: 0;
 }
 
 .logo strong {
     color: var(--text);
 }
 
-.header-right {
+.header-right, .nav-actions {
     display: flex;
     align-items: center;
     gap: 16px;
+    flex-shrink: 0;
 }
 
 .nav-link {
@@ -139,7 +143,7 @@ button {
 
 /* Cart Link */
 .cart-link {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
     background-color: var(--primary);
@@ -150,6 +154,9 @@ button {
     font-size: 0.9rem;
     transition: background-color 0.2s;
     position: relative;
+    white-space: nowrap;
+    text-decoration: none;
+    flex-shrink: 0;
 }
 
 .cart-link:hover {
@@ -973,20 +980,22 @@ button {
 
 /* Tablets */
 @media (max-width: 768px) {
-    .header-content {
+    .header-content, .header-container {
         flex-direction: column;
         height: auto;
         padding: 12px 0;
+        gap: 12px;
+    }
+
+    .header-right, .nav-actions {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
         gap: 10px;
     }
 
-    .header-right {
-        width: 100%;
-        justify-content: center;
-    }
-
     .search-input {
-        width: 160px;
+        width: 180px;
     }
 
     .hero h1 {
