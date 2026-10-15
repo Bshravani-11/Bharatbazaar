@@ -100,7 +100,7 @@ public class FirebaseService {
 
         // Fallback defaults
         this.enabled = true;
-        this.databaseUrl = "https://bharatbazaar-btech-default-rtdb.asia-southeast1.firebasedatabase.app";
+        this.databaseUrl = "https://bharatbazaar-7797e-default-rtdb.firebaseio.com";
     }
 
     /**
