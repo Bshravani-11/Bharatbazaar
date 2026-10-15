@@ -329,6 +329,10 @@ public class ShoppingCartServer {
                 return;
             }
             User user = getAuthenticatedUser(exchange);
+            if (user == null) {
+                sendRedirect(exchange, "/login?msg=Please+sign+in+to+your+account+to+proceed+with+checkout.");
+                return;
+            }
             String html = renderCheckoutPage(user);
             sendResponse(exchange, 200, html, "text/html; charset=UTF-8");
         }
@@ -339,10 +343,14 @@ public class ShoppingCartServer {
         public void handle(HttpExchange exchange) throws IOException {
             if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 User user = getAuthenticatedUser(exchange);
+                if (user == null) {
+                    sendRedirect(exchange, "/login?msg=Please+sign+in+to+place+your+order.");
+                    return;
+                }
                 Map<String, String> form = parseFormData(exchange);
-                String fullName = form.getOrDefault("fullName", user != null ? user.getName() : "Customer");
-                String email = form.getOrDefault("email", user != null ? user.getEmail() : "customer@example.in");
-                String phone = form.getOrDefault("phone", user != null ? user.getPhone() : "+91 98765 43210");
+                String fullName = form.getOrDefault("fullName", user.getName());
+                String email = form.getOrDefault("email", user.getEmail());
+                String phone = form.getOrDefault("phone", user.getPhone());
                 String address = form.getOrDefault("address", "N/A");
                 String city = form.getOrDefault("city", "Bengaluru");
                 String state = form.getOrDefault("state", "Karnataka");
@@ -368,7 +376,6 @@ public class ShoppingCartServer {
                 System.out.println("  Address: " + fullAddress);
                 System.out.println("  Payment Method: Cash on Delivery (COD) Only");
                 System.out.println("  Amount: Rs. " + String.format("%.2f", finalTotal));
-                System.out.println("  Storage: Firebase Realtime Database");
                 System.out.println("=========================================");
 
                 String html = renderConfirmationPage(orderNumber, fullName, email, phone, fullAddress, orderedItems, finalTotal, user);
@@ -383,6 +390,10 @@ public class ShoppingCartServer {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             User user = getAuthenticatedUser(exchange);
+            if (user == null) {
+                sendRedirect(exchange, "/login?msg=Please+sign+in+to+view+your+order+history.");
+                return;
+            }
             String html = renderOrdersPage(user);
             sendResponse(exchange, 200, html, "text/html; charset=UTF-8");
         }
@@ -595,7 +606,7 @@ public class ShoppingCartServer {
                "        <div class=\"footer-section\">\n" +
                "            <h4>BharatBazaar Retail</h4>\n" +
                "            <p>Certified online marketplace for electronics, apparel, and domestic essentials across India.</p>\n" +
-               "            <p style=\"margin-top:10px; font-size:0.8rem; color:#94a3b8;\">" + SVG_DATABASE + " Backend Integrated with Firebase Cloud Database (bharatbazaar-7797e)</p>\n" +
+               "            <p style=\"margin-top:10px; font-size:0.8rem; color:#94a3b8;\">100% Verified Quality | Safe Cash on Delivery Across India</p>\n" +
                "        </div>\n" +
                "        <div class=\"footer-section\">\n" +
                "            <h4>Quick Navigation</h4>\n" +
@@ -951,7 +962,7 @@ public class ShoppingCartServer {
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
           .append("<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
-          .append("<title>BharatBazaar - Order Management System</title>\n")
+          .append("<title>BharatBazaar - Your Orders</title>\n")
           .append("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\">\n")
           .append("<link href=\"/css/styles.css\" rel=\"stylesheet\">\n")
           .append("</head>\n<body>\n");
@@ -961,27 +972,33 @@ public class ShoppingCartServer {
         sb.append("<main class=\"cart-page\" style=\"max-width:1100px;\">\n")
           .append("    <div style=\"display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:24px;\">\n")
           .append("        <div>\n")
-          .append("            <h1 class=\"page-title\" style=\"margin-bottom:4px;\">Order Management System</h1>\n")
-          .append("            <p style=\"color:#64748b; font-size:0.9rem;\">Centralized order records synchronized with Firebase Realtime Database (bharatbazaar-7797e)</p>\n")
+          .append("            <h1 class=\"page-title\" style=\"margin-bottom:4px;\">Your Orders & Deliveries</h1>\n")
+          .append("            <p style=\"color:#64748b; font-size:0.9rem;\">Confirmed purchase records for <strong>").append(user != null ? user.getEmail() : "").append("</strong></p>\n")
           .append("        </div>\n")
-          .append("        <div style=\"background:#f8fafc; border:1px solid #e2e8f0; padding:8px 14px; border-radius:6px; font-size:0.8rem; color:#475569;\">\n")
-          .append("            ").append(SVG_DATABASE).append("<strong>Database Endpoint:</strong> ").append(firebaseService.getDatabaseUrl()).append("\n")
+          .append("        <div style=\"background:#f0fdf4; border:1px solid #bbf7d0; padding:8px 14px; border-radius:6px; font-size:0.8rem; color:#15803d; font-weight:600;\">\n")
+          .append("            &#10003; Payment: Cash on Delivery | Fast Doorstep Dispatch\n")
           .append("        </div>\n")
           .append("    </div>\n");
 
-        List<FirebaseService.OrderRecord> records = firebaseService.getOrderRecords();
+        List<FirebaseService.OrderRecord> allRecords = firebaseService.getOrderRecords();
+        List<FirebaseService.OrderRecord> records = new ArrayList<>();
+        for (FirebaseService.OrderRecord r : allRecords) {
+            if (user != null && ("ADMIN".equalsIgnoreCase(user.getRole()) || (r.email != null && r.email.equalsIgnoreCase(user.getEmail())))) {
+                records.add(r);
+            }
+        }
 
         if (records.isEmpty()) {
             sb.append("    <div class=\"empty-cart\">\n")
               .append("        <div class=\"empty-cart-icon\">").append(SVG_ORDERS).append("</div>\n")
               .append("        <h2>No order records found</h2>\n")
-              .append("        <p>Orders placed through the checkout system will appear here in real time.</p>\n")
+              .append("        <p>You have not placed any orders yet under this account.</p>\n")
               .append("        <a href=\"/\" class=\"hero-btn\">Browse Catalog</a>\n")
               .append("    </div>\n");
         } else {
             sb.append("    <div class=\"cart-table\">\n")
               .append("        <div class=\"cart-table-header\" style=\"grid-template-columns: 1.2fr 1.5fr 1.8fr 1fr 1fr;\">\n")
-              .append("            <span>Reference ID</span><span>Customer</span><span>Delivery Location</span><span>Amount (COD)</span><span>Database Status</span>\n")
+              .append("            <span>Reference ID</span><span>Customer</span><span>Delivery Location</span><span>Amount (COD)</span><span>Order Status</span>\n")
               .append("        </div>\n");
 
             for (FirebaseService.OrderRecord r : records) {
@@ -1000,7 +1017,7 @@ public class ShoppingCartServer {
                   .append("                <div style=\"font-size:0.75rem; color:#16a34a; font-weight:600;\">Cash on Delivery</div>\n")
                   .append("            </div>\n")
                   .append("            <div>\n")
-                  .append("                <span style=\"background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-size:0.75rem; font-weight:600; padding:4px 10px; border-radius:4px; display:inline-block;\">").append(r.syncStatus).append("</span>\n")
+                  .append("                <span style=\"background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-size:0.75rem; font-weight:700; padding:4px 10px; border-radius:4px; display:inline-block;\">&#10003; Confirmed</span>\n")
                   .append("            </div>\n")
                   .append("        </div>\n");
             }
