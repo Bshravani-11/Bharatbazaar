@@ -82,6 +82,25 @@ The application will compile and launch the server on **http://localhost:8080**.
 
 ---
 
+## ☁️ How to Deploy Live (Free Cloud Hosting via GitHub)
+
+Because this application includes a full-stack **Java backend** and **HTTP server** (not just static HTML), GitHub Pages alone cannot run the Java virtual machine. 
+
+To deploy it live with a public URL (e.g. `https://bharatbazaar.onrender.com`), use **Render.com** (100% Free, connects directly to your GitHub repo):
+
+### Step-by-Step Deployment on Render:
+1. Open **[Render.com](https://render.com/)** and sign in with your GitHub account (`Bshravani-11`).
+2. Click **New +** > **Web Service**.
+3. Choose **Build and deploy from a Git repository** and select **`Bharatbazaar`**.
+4. Configure these simple settings:
+   - **Name**: `bharatbazaar`
+   - **Runtime**: `Docker` (Render will automatically detect the included `Dockerfile` and `render.yaml`)
+   - **Instance Type**: **Free**
+5. Click **Deploy Web Service**!
+6. Render will automatically compile the Java code, start the server, and give you a **Live Public URL** (e.g. `https://bharatbazaar.onrender.com`) that anyone can access from anywhere!
+
+---
+
 ## 🌐 Application Endpoints
 
 - **Storefront**: [http://localhost:8080/](http://localhost:8080/)

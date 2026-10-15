@@ -32,7 +32,7 @@ import java.util.*;
  */
 public class ShoppingCartServer {
 
-    private static final int PORT = 8080;
+    private final int port;
     private final ProductService productService;
     private final Cart cart;
     private final FirebaseService firebaseService;
@@ -74,6 +74,14 @@ public class ShoppingCartServer {
         "<polyline points=\"3 6 5 6 21 6\"></polyline><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"></path></svg>";
 
     public ShoppingCartServer() {
+        int p = 8080;
+        String envPort = System.getenv("PORT");
+        if (envPort != null && !envPort.trim().isEmpty()) {
+            try {
+                p = Integer.parseInt(envPort.trim());
+            } catch (Exception ignored) {}
+        }
+        this.port = p;
         this.productService = new ProductService();
         this.cart = new Cart();
         this.firebaseService = new FirebaseService();
@@ -85,7 +93,7 @@ public class ShoppingCartServer {
     }
 
     public void start() throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
         // Register URL Routes
         server.createContext("/", new HomeHandler());
@@ -107,8 +115,8 @@ public class ShoppingCartServer {
         System.out.println("  BharatBazaar E-Commerce Platform Online");
         System.out.println("  Payment Method: Cash on Delivery (COD) Only");
         System.out.println("  Cloud Database: " + firebaseService.getDatabaseUrl());
-        System.out.println("  Storefront URL: http://localhost:8080");
-        System.out.println("  Order Management: http://localhost:8080/orders");
+        System.out.println("  Storefront URL: http://localhost:" + port);
+        System.out.println("  Order Management: http://localhost:" + port + "/orders");
         System.out.println("==========================================================");
     }
 
