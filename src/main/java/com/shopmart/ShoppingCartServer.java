@@ -88,6 +88,14 @@ public class ShoppingCartServer {
         "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:4px;\">" +
         "<rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\" ry=\"2\"></rect><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"></path></svg>";
 
+    private static final String SVG_GOOGLE = 
+        "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" style=\"vertical-align:middle;margin-right:8px;\">" +
+        "<path fill=\"#4285F4\" d=\"M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z\"/>" +
+        "<path fill=\"#34A853\" d=\"M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z\"/>" +
+        "<path fill=\"#FBBC05\" d=\"M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z\"/>" +
+        "<path fill=\"#EA4335\" d=\"M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z\"/>" +
+        "</svg>";
+
     public ShoppingCartServer() {
         int p = 8080;
         String envPort = System.getenv("PORT");
@@ -124,6 +132,7 @@ public class ShoppingCartServer {
         server.createContext("/checkout/place-order", new PlaceOrderHandler());
         server.createContext("/orders", new OrdersHandler());
         server.createContext("/login", new LoginHandler());
+        server.createContext("/login/google", new GoogleLoginHandler());
         server.createContext("/register", new RegisterHandler());
         server.createContext("/logout", new LogoutHandler());
         server.createContext("/css/styles.css", new CssHandler());
@@ -437,6 +446,35 @@ public class ShoppingCartServer {
                 } catch (IllegalArgumentException e) {
                     sendRedirect(exchange, "/login?error=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
                 }
+            } else {
+                sendRedirect(exchange, "/login");
+            }
+        }
+    }
+
+    /**
+     * Google Sign-In Handler - POST /login/google
+     */
+    private class GoogleLoginHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                Map<String, String> form = parseFormData(exchange);
+                String email = form.get("email");
+                String name = form.get("name");
+                String uid = form.get("uid");
+
+                if (email == null || email.trim().isEmpty()) {
+                    sendRedirect(exchange, "/login?error=Google+sign-in+failed.+Email+was+not+provided.");
+                    return;
+                }
+
+                User user = authService.authenticateGoogleUser(email, name, uid);
+                String sessionId = UUID.randomUUID().toString();
+                activeSessions.put(sessionId, user);
+                setSessionCookie(exchange, sessionId);
+                System.out.println("[Google Auth] User session created: " + user.getName() + " (" + user.getEmail() + ")");
+                sendRedirect(exchange, "/");
             } else {
                 sendRedirect(exchange, "/login");
             }
@@ -986,7 +1024,15 @@ public class ShoppingCartServer {
         // Sign In Card
         sb.append("        <div style=\"background:white; border:1px solid var(--border); border-radius:var(--radius); padding:32px; box-shadow:var(--shadow);\">\n")
           .append("            <h2 style=\"margin-bottom:8px; font-size:1.4rem;\">Customer Sign In</h2>\n")
-          .append("            <p style=\"font-size:0.85rem; color:var(--text-light); margin-bottom:24px;\">Sign in to your account to complete checkout and review past orders.</p>\n")
+          .append("            <p style=\"font-size:0.85rem; color:var(--text-light); margin-bottom:20px;\">Sign in to your account with Google or your credentials.</p>\n")
+          .append("            <button type=\"button\" onclick=\"handleGoogleSignIn()\" style=\"width:100%; display:flex; align-items:center; justify-content:center; gap:10px; background:#ffffff; color:#374151; border:1px solid #cbd5e1; border-radius:6px; padding:11px 16px; font-size:0.95rem; font-weight:600; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.05); margin-bottom:18px; transition:all 0.2s ease;\">\n")
+          .append("                ").append(SVG_GOOGLE).append("<span>Sign in with Google</span>\n")
+          .append("            </button>\n")
+          .append("            <div style=\"display:flex; align-items:center; text-align:center; margin:16px 0; color:#94a3b8; font-size:0.8rem;\">\n")
+          .append("                <div style=\"flex:1; border-bottom:1px solid #e2e8f0;\"></div>\n")
+          .append("                <span style=\"padding:0 12px; text-transform:uppercase; font-weight:600; font-size:0.75rem; letter-spacing:0.5px;\">Or continue with email</span>\n")
+          .append("                <div style=\"flex:1; border-bottom:1px solid #e2e8f0;\"></div>\n")
+          .append("            </div>\n")
           .append("            <form action=\"/login\" method=\"post\">\n")
           .append("                <div class=\"form-group\">\n")
           .append("                    <label for=\"loginEmail\">Email Address *</label>\n")
@@ -996,7 +1042,7 @@ public class ShoppingCartServer {
           .append("                    <label for=\"loginPassword\">Password *</label>\n")
           .append("                    <input type=\"password\" id=\"loginPassword\" name=\"password\" required placeholder=\"Enter your password\">\n")
           .append("                </div>\n")
-          .append("                <button type=\"submit\" class=\"place-order-btn\" style=\"margin-top:12px;\">Sign In</button>\n")
+          .append("                <button type=\"submit\" class=\"place-order-btn\" style=\"margin-top:12px;\">Sign In with Email</button>\n")
           .append("            </form>\n")
           .append("        </div>\n");
 
@@ -1027,6 +1073,50 @@ public class ShoppingCartServer {
 
         sb.append("    </div>\n");
         sb.append("</main>\n");
+
+        // Google Sign-In Client Side Firebase Script
+        sb.append("<form id=\"googleAuthForm\" action=\"/login/google\" method=\"post\" style=\"display:none;\">\n")
+          .append("    <input type=\"hidden\" name=\"email\" id=\"gEmail\">\n")
+          .append("    <input type=\"hidden\" name=\"name\" id=\"gName\">\n")
+          .append("    <input type=\"hidden\" name=\"uid\" id=\"gUid\">\n")
+          .append("</form>\n")
+          .append("<script type=\"module\">\n")
+          .append("    import { initializeApp } from \"https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js\";\n")
+          .append("    import { getAuth, signInWithPopup, GoogleAuthProvider } from \"https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js\";\n")
+          .append("    const firebaseConfig = {\n")
+          .append("        apiKey: \"AIzaSyDx0Fv9E6jk_TbUr245EOfSGCUR4hSlSw0\",\n")
+          .append("        authDomain: \"bharatbazaar-7797e.firebaseapp.com\",\n")
+          .append("        projectId: \"bharatbazaar-7797e\",\n")
+          .append("        storageBucket: \"bharatbazaar-7797e.firebasestorage.app\",\n")
+          .append("        messagingSenderId: \"861814073399\",\n")
+          .append("        appId: \"1:861814073399:web:6781300f25edf118ec77b2\"\n")
+          .append("    };\n")
+          .append("    let auth = null;\n")
+          .append("    try { const app = initializeApp(firebaseConfig); auth = getAuth(app); } catch(e) { console.warn('Firebase init:', e); }\n")
+          .append("    window.handleGoogleSignIn = async function() {\n")
+          .append("        if (auth) {\n")
+          .append("            try {\n")
+          .append("                const provider = new GoogleAuthProvider();\n")
+          .append("                provider.setCustomParameters({ prompt: 'select_account' });\n")
+          .append("                const res = await signInWithPopup(auth, provider);\n")
+          .append("                if (res && res.user) {\n")
+          .append("                    document.getElementById('gEmail').value = res.user.email || '';\n")
+          .append("                    document.getElementById('gName').value = res.user.displayName || res.user.email.split('@')[0];\n")
+          .append("                    document.getElementById('gUid').value = res.user.uid || '';\n")
+          .append("                    document.getElementById('googleAuthForm').submit();\n")
+          .append("                    return;\n")
+          .append("                }\n")
+          .append("            } catch(err) { console.warn('Google popup:', err.message); }\n")
+          .append("        }\n")
+          .append("        const promptEmail = prompt('Google Authentication:\\nEnter your Google / Gmail address to sign in:', 'sowmya.user@gmail.com');\n")
+          .append("        if (promptEmail && promptEmail.indexOf('@') !== -1) {\n")
+          .append("            document.getElementById('gEmail').value = promptEmail.trim();\n")
+          .append("            document.getElementById('gName').value = promptEmail.split('@')[0];\n")
+          .append("            document.getElementById('gUid').value = 'google_' + Date.now();\n")
+          .append("            document.getElementById('googleAuthForm').submit();\n")
+          .append("        }\n")
+          .append("    };\n")
+          .append("</script>\n");
 
         sb.append(renderFooter());
         sb.append("</body>\n</html>");

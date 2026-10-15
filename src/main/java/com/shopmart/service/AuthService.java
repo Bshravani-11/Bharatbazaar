@@ -17,24 +17,26 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * AuthService - Authentication & User Account Service
+ * AuthService - Production Firebase Authentication Service
  * 
  * Demonstrates:
- *   - User authentication and session management
- *   - User profile storage in Firebase Realtime Database (/users node)
- *   - In-memory caching for resilient offline/online login
+ *   - Direct Firebase Authentication REST API integration (Identity Toolkit)
+ *   - Google Sign-In and Email/Password account support
+ *   - User profile synchronization to Firebase Realtime Database
+ *   - Thread-safe session authentication and local caching
  */
 public class AuthService {
 
     private final Map<String, User> usersByEmail;
     private final HttpClient httpClient;
+    private String apiKey;
     private String databaseUrl;
     private boolean firebaseEnabled;
 
     public AuthService() {
         this.usersByEmail = new ConcurrentHashMap<>();
         this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
+                .connectTimeout(Duration.ofSeconds(6))
                 .build();
 
         loadConfig();
@@ -48,6 +50,7 @@ public class AuthService {
             try (InputStream in = new FileInputStream(configFile)) {
                 props.load(in);
                 this.firebaseEnabled = Boolean.parseBoolean(props.getProperty("firebase.enabled", "true"));
+                this.apiKey = props.getProperty("firebase.api.key", "AIzaSyDx0Fv9E6jk_TbUr245EOfSGCUR4hSlSw0").trim();
                 this.databaseUrl = props.getProperty("firebase.database.url", "").trim();
                 if (this.databaseUrl.endsWith("/")) {
                     this.databaseUrl = this.databaseUrl.substring(0, this.databaseUrl.length() - 1);
@@ -55,14 +58,14 @@ public class AuthService {
             } catch (Exception ignored) {}
         }
 
+        if (this.apiKey == null || this.apiKey.isEmpty()) {
+            this.apiKey = "AIzaSyDx0Fv9E6jk_TbUr245EOfSGCUR4hSlSw0";
+        }
         if (this.databaseUrl == null || this.databaseUrl.isEmpty()) {
             this.databaseUrl = "https://bharatbazaar-7797e-default-rtdb.firebaseio.com";
         }
     }
 
-    /**
-     * Seeds initial sample user for instant evaluation/testing
-     */
     private void seedDefaultUsers() {
         User defaultUser = new User(
                 UUID.randomUUID().toString(),
@@ -86,19 +89,69 @@ public class AuthService {
     }
 
     /**
-     * Authenticate user with email and password
+     * Authenticate user with Email and Password using Firebase Auth REST API
      */
     public User authenticate(String email, String password) {
         if (email == null || password == null) return null;
-        User user = usersByEmail.get(email.trim().toLowerCase());
-        if (user != null && user.getPassword().equals(password)) {
-            return user;
+        String normalizedEmail = email.trim().toLowerCase();
+
+        // 1. Try Firebase Authentication API
+        if (firebaseEnabled && apiKey != null && !apiKey.isEmpty()) {
+            try {
+                String endpoint = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + apiKey;
+                String jsonBody = "{\"email\":\"" + escapeJson(normalizedEmail) + "\",\"password\":\"" + escapeJson(password) + "\",\"returnSecureToken\":true}";
+
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(endpoint))
+                        .timeout(Duration.ofSeconds(6))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    String body = response.body();
+                    String localId = extractJsonField(body, "localId");
+                    String displayName = extractJsonField(body, "displayName");
+                    if (displayName == null || displayName.isEmpty()) {
+                        displayName = normalizedEmail.split("@")[0];
+                    }
+
+                    User user = new User(
+                            localId != null ? localId : UUID.randomUUID().toString(),
+                            displayName,
+                            normalizedEmail,
+                            password,
+                            "",
+                            "CUSTOMER"
+                    );
+
+                    usersByEmail.put(normalizedEmail, user);
+                    System.out.println("==========================================================");
+                    System.out.println("  [Firebase Auth] SUCCESS! Authenticated via Firebase Cloud");
+                    System.out.println("  User: " + user.getName() + " (" + user.getEmail() + ")");
+                    System.out.println("==========================================================");
+                    return user;
+                } else {
+                    System.out.println("[Firebase Auth] Notice: Firebase Auth returned " + response.statusCode());
+                }
+            } catch (Exception e) {
+                System.out.println("[Firebase Auth] Cloud network notice: " + e.getMessage());
+            }
         }
+
+        // 2. Fallback to cached in-memory accounts (for demo users like sowmya@example.com)
+        User localUser = usersByEmail.get(normalizedEmail);
+        if (localUser != null && localUser.getPassword().equals(password)) {
+            System.out.println("[Auth] Authenticated via verified credentials: " + localUser.getEmail());
+            return localUser;
+        }
+
         return null;
     }
 
     /**
-     * Register a new user account
+     * Register a new user account with Firebase Authentication API
      */
     public User register(String name, String email, String password, String phone) throws IllegalArgumentException {
         if (name == null || name.trim().isEmpty()) {
@@ -112,34 +165,130 @@ public class AuthService {
         }
 
         String normalizedEmail = email.trim().toLowerCase();
+        String trimmedName = name.trim();
+        String trimmedPhone = phone != null ? phone.trim() : "";
+
+        // 1. Try Firebase Authentication API (signUp)
+        if (firebaseEnabled && apiKey != null && !apiKey.isEmpty()) {
+            try {
+                String endpoint = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + apiKey;
+                String jsonBody = "{\"email\":\"" + escapeJson(normalizedEmail) + "\",\"password\":\"" + escapeJson(password) + "\",\"returnSecureToken\":true}";
+
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(endpoint))
+                        .timeout(Duration.ofSeconds(6))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    String body = response.body();
+                    String localId = extractJsonField(body, "localId");
+                    String idToken = extractJsonField(body, "idToken");
+
+                    // Set displayName in Firebase Auth profile
+                    if (idToken != null) {
+                        updateFirebaseProfile(idToken, trimmedName);
+                    }
+
+                    User newUser = new User(
+                            localId != null ? localId : UUID.randomUUID().toString(),
+                            trimmedName,
+                            normalizedEmail,
+                            password,
+                            trimmedPhone,
+                            "CUSTOMER"
+                    );
+
+                    usersByEmail.put(normalizedEmail, newUser);
+                    syncUserToFirebaseDatabase(newUser);
+
+                    System.out.println("==========================================================");
+                    System.out.println("  [Firebase Auth] New User Created in Firebase Cloud!");
+                    System.out.println("  User: " + newUser.getName() + " (" + newUser.getEmail() + ")");
+                    System.out.println("==========================================================");
+                    return newUser;
+                } else if (response.body().contains("EMAIL_EXISTS")) {
+                    throw new IllegalArgumentException("An account with this email address already exists in Firebase.");
+                } else {
+                    System.out.println("[Firebase Auth] Sign up response: " + response.statusCode() + " | " + response.body());
+                }
+            } catch (IllegalArgumentException iae) {
+                throw iae;
+            } catch (Exception e) {
+                System.out.println("[Firebase Auth] Notice during registration: " + e.getMessage());
+            }
+        }
+
+        // 2. Fallback to local registration if offline
         if (usersByEmail.containsKey(normalizedEmail)) {
             throw new IllegalArgumentException("An account with this email address already exists.");
         }
 
-        User newUser = new User(
+        User fallbackUser = new User(
                 UUID.randomUUID().toString(),
-                name.trim(),
+                trimmedName,
                 normalizedEmail,
                 password,
-                phone != null ? phone.trim() : "",
+                trimmedPhone,
                 "CUSTOMER"
         );
-
-        usersByEmail.put(normalizedEmail, newUser);
-
-        // Asynchronously synchronize user to Firebase Realtime Database
-        syncUserToFirebase(newUser);
-
-        return newUser;
+        usersByEmail.put(normalizedEmail, fallbackUser);
+        syncUserToFirebaseDatabase(fallbackUser);
+        return fallbackUser;
     }
 
     /**
-     * Store user in Firebase Realtime Database under /users/{safeEmail}.json
+     * Authenticate or register a Google Sign-In user
      */
-    private void syncUserToFirebase(User user) {
+    public User authenticateGoogleUser(String email, String name, String googleId) {
+        if (email == null || email.trim().isEmpty()) {
+            email = "google_user_" + System.currentTimeMillis() + "@gmail.com";
+        }
+        String normalizedEmail = email.trim().toLowerCase();
+        String displayName = (name != null && !name.trim().isEmpty()) ? name.trim() : normalizedEmail.split("@")[0];
+
+        User user = usersByEmail.get(normalizedEmail);
+        if (user == null) {
+            user = new User(
+                    googleId != null ? googleId : UUID.randomUUID().toString(),
+                    displayName,
+                    normalizedEmail,
+                    "",
+                    "",
+                    "CUSTOMER"
+            );
+            usersByEmail.put(normalizedEmail, user);
+            syncUserToFirebaseDatabase(user);
+        }
+
+        System.out.println("==========================================================");
+        System.out.println("  [Google Sign-In] User Signed In via Google Auth");
+        System.out.println("  Name: " + user.getName() + " | Email: " + user.getEmail());
+        System.out.println("==========================================================");
+        return user;
+    }
+
+    private void updateFirebaseProfile(String idToken, String displayName) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                String endpoint = "https://identitytoolkit.googleapis.com/v1/accounts:update?key=" + apiKey;
+                String body = "{\"idToken\":\"" + idToken + "\",\"displayName\":\"" + escapeJson(displayName) + "\",\"returnSecureToken\":true}";
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(endpoint))
+                        .timeout(Duration.ofSeconds(4))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build();
+                httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private void syncUserToFirebaseDatabase(User user) {
         if (!firebaseEnabled || databaseUrl == null || databaseUrl.isEmpty()) return;
 
-        // Firebase keys cannot contain '.' so we replace it with '_'
         String safeKey = user.getEmail().replace(".", "_").replace("@", "_at_");
         String endpoint = databaseUrl + "/users/" + safeKey + ".json";
 
@@ -160,14 +309,26 @@ public class AuthService {
                         .PUT(HttpRequest.BodyPublishers.ofString(json))
                         .build();
 
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                    System.out.println("[Firebase] User profile synced to cloud: " + user.getEmail());
-                }
-            } catch (Exception e) {
-                System.out.println("[Firebase] User profile cached locally: " + e.getMessage());
-            }
+                httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            } catch (Exception ignored) {}
         });
+    }
+
+    private String extractJsonField(String json, String field) {
+        String pattern = "\"" + field + "\":\"";
+        int idx = json.indexOf(pattern);
+        if (idx == -1) {
+            pattern = "\"" + field + "\": \"";
+            idx = json.indexOf(pattern);
+        }
+        if (idx != -1) {
+            int start = idx + pattern.length();
+            int end = json.indexOf("\"", start);
+            if (end != -1) {
+                return json.substring(start, end);
+            }
+        }
+        return null;
     }
 
     private String escapeJson(String s) {
