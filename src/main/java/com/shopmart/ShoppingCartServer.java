@@ -136,6 +136,7 @@ public class ShoppingCartServer {
         server.createContext("/register", new RegisterHandler());
         server.createContext("/logout", new LogoutHandler());
         server.createContext("/css/styles.css", new CssHandler());
+        server.createContext("/images/", new ImageHandler());
 
         server.setExecutor(null);
         server.start();
@@ -517,6 +518,37 @@ public class ShoppingCartServer {
                 }
             } else {
                 sendResponse(exchange, 404, "CSS Not Found", "text/plain");
+            }
+        }
+    }
+
+    private class ImageHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String path = exchange.getRequestURI().getPath();
+            String filename = path.substring(path.lastIndexOf('/') + 1);
+            byte[] bytes = null;
+
+            Path imgPath = Paths.get("src", "main", "resources", "static", "images", filename);
+            if (Files.exists(imgPath)) {
+                bytes = Files.readAllBytes(imgPath);
+            } else {
+                try (InputStream is = getClass().getResourceAsStream("/static/images/" + filename)) {
+                    if (is != null) {
+                        bytes = is.readAllBytes();
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            if (bytes != null) {
+                exchange.getResponseHeaders().set("Content-Type", "image/jpeg");
+                exchange.getResponseHeaders().set("Cache-Control", "public, max-age=86400");
+                exchange.sendResponseHeaders(200, bytes.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(bytes);
+                }
+            } else {
+                sendResponse(exchange, 404, "Image Not Found", "text/plain");
             }
         }
     }

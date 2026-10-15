@@ -33,73 +33,73 @@ public class ProductService {
                 "boAt Rockerz 450 Bluetooth Headphones",
                 "High bass on-ear wireless headphones with 40mm dynamic drivers and 15-hour playback.",
                 1499.00, "Electronics",
-                "https://picsum.photos/seed/boatheadphone/400/300", 25));
+                "/images/1-boat-headphones.jpg", 25));
 
         products.add(new Product(2L,
                 "FabIndia Men's Pure Cotton Kurta",
                 "Handcrafted comfortable ethnic cotton kurta in vibrant indigo blue. Ideal for festive and casual wear.",
                 1199.00, "Fashion",
-                "https://picsum.photos/seed/cottonkurta/400/300", 30));
+                "/images/2-cotton-kurta.jpg", 30));
 
         products.add(new Product(3L,
                 "Banarasi Silk Saree with Zari Border",
                 "Traditional handwoven art silk saree with ornate floral zari weaving and matching blouse piece.",
                 1899.00, "Fashion",
-                "https://picsum.photos/seed/banarasisaree/400/300", 20));
+                "/images/3-banarasi-saree.jpg", 20));
 
         products.add(new Product(4L,
                 "Prestige Tri-Ply Stainless Steel Flask (1000ml)",
                 "Double-wall insulated bottle that keeps water hot or cold for 24 hours. BPA free and leak-proof.",
                 749.00, "Home & Kitchen",
-                "https://picsum.photos/seed/prestigebottle/400/300", 40));
+                "/images/4-prestige-flask.jpg", 40));
 
         products.add(new Product(5L,
                 "Sparx Men's Lightweight Running Shoes",
                 "Breathable mesh sports shoes with cushioned EVA sole for high grip and daily jogging comfort.",
                 999.00, "Footwear",
-                "https://picsum.photos/seed/sparxshoes/400/300", 35));
+                "/images/5-sparx-shoes.jpg", 35));
 
         products.add(new Product(6L,
                 "Mi 10000mAh Power Bank (18W Fast Charge)",
                 "Dual output USB-A & Type-C fast charging power bank with 12 layers of circuit protection.",
                 1299.00, "Electronics",
-                "https://picsum.photos/seed/mipowerbank/400/300", 50));
+                "/images/6-mi-powerbank.jpg", 50));
 
         products.add(new Product(7L,
                 "Handcrafted Terracotta Ceramic Chai Cups (Set of 6)",
                 "Traditional Kulhad-style ceramic tea cups made by Indian artisans. Microwave and dishwasher safe.",
                 499.00, "Home & Kitchen",
-                "https://picsum.photos/seed/chaicups/400/300", 45));
+                "/images/7-terracotta-cups.jpg", 45));
 
         products.add(new Product(8L,
                 "Dabur Organic Kashmiri Wild Honey (500g)",
                 "100% pure raw forest honey rich in natural antioxidants. Certified organic with no added sugar.",
                 349.00, "Grocery",
-                "https://picsum.photos/seed/rawhoney/400/300", 60));
+                "/images/8-wild-honey.jpg", 60));
 
         products.add(new Product(9L,
                 "Noise ColorFit Pulse 2 Max Smartwatch",
                 "1.85-inch display smartwatch with Bluetooth calling, 150+ watch faces, SpO2 & heart rate monitor.",
                 1799.00, "Electronics",
-                "https://picsum.photos/seed/noisesmartwatch/400/300", 20));
+                "/images/9-smartwatch.jpg", 20));
 
         products.add(new Product(10L,
                 "Wildcraft 35L Water Resistant Travel Backpack",
                 "Ergonomic travel and college backpack with dedicated laptop sleeve, rain cover, and mesh bottle holder.",
                 1399.00, "Accessories",
-                "https://picsum.photos/seed/wildcraftbag/400/300", 28));
+                "/images/10-travel-backpack.jpg", 28));
 
         products.add(new Product(11L,
                 "Fastrack Polarized Aviator Sunglasses",
                 "Classic aviator sunglasses with UV400 protective polarized lenses and lightweight metallic frame.",
                 899.00, "Accessories",
-                "https://picsum.photos/seed/fastracksunglass/400/300", 40));
+                "/images/11-aviator-sunglasses.jpg", 40));
 
         products.add(new Product(12L,
                 "Tata Tea Gold (1kg) Premium Blend",
                 "Exquisite blend of Assam CTC teas with gently rolled 15% long leaves for rich aroma and brisk taste.",
                 460.00, "Grocery",
-                "https://picsum.photos/seed/tatateagold/400/300", 55));
+                "/images/12-tata-tea-gold.jpg", 55));
     }
 
     // ===== Service Methods =====
