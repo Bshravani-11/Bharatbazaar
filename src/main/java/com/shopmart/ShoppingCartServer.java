@@ -60,6 +60,10 @@ public class ShoppingCartServer {
         "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:4px;\">" +
         "<path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"></path><polyline points=\"14 2 14 8 20 8\"></polyline><line x1=\"16\" y1=\"13\" x2=\"8\" y2=\"13\"></line><line x1=\"16\" y1=\"17\" x2=\"8\" y2=\"17\"></line></svg>";
 
+    private static final String SVG_HOME = 
+        "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:4px;\">" +
+        "<path d=\"m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"></path><polyline points=\"9 22 9 12 15 12 15 22\"></polyline></svg>";
+
     private static final String SVG_USER = 
         "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"vertical-align:middle;margin-right:4px;\">" +
         "<path d=\"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\"></path><circle cx=\"12\" cy=\"7\" r=\"4\"></circle></svg>";
@@ -578,6 +582,7 @@ public class ShoppingCartServer {
           .append("                <input type=\"text\" name=\"query\" placeholder=\"Search catalog by brand or product...\" class=\"search-input\">\n")
           .append("                <button type=\"submit\" class=\"search-btn\" title=\"Search\">").append(SVG_SEARCH).append("</button>\n")
           .append("            </form>\n")
+          .append("            <a href=\"/\" class=\"nav-link\">").append(SVG_HOME).append(" Home</a>\n")
           .append("            <a href=\"/orders\" class=\"nav-link\">").append(SVG_ORDERS).append(" Order History</a>\n");
 
         if (currentUser != null) {
