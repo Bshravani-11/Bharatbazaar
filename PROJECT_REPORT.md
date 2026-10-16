@@ -5,6 +5,7 @@
 
 **Degree:** Bachelor of Technology (B.Tech) — 2nd Year  
 **Department:** Computer Science and Engineering / Information Technology  
+**Live Deployed Application:** [https://bshravani-11.github.io/Bharatbazaar](https://bshravani-11.github.io/Bharatbazaar)  
 **Repository:** [https://github.com/Bshravani-11/Bharatbazaar](https://github.com/Bshravani-11/Bharatbazaar)  
 
 ---
@@ -39,6 +40,7 @@ To achieve persistent cloud order tracking, the backend integrates asynchronousl
 * **Typography:** Inter (Google Fonts)
 
 ### 2.4 DevOps & Deployment
+* **Live Web Deployment:** GitHub Pages ([https://bshravani-11.github.io/Bharatbazaar](https://bshravani-11.github.io/Bharatbazaar))
 * **Version Control:** Git & GitHub ([Bshravani-11/Bharatbazaar](https://github.com/Bshravani-11/Bharatbazaar))
 * **Containerization:** Multi-stage Dockerfile (`eclipse-temurin:17-jdk-alpine` build + `eclipse-temurin:17-jre-alpine` runtime)
 * **Cloud Platform:** Render.com PaaS integration (`render.yaml` specification)
@@ -50,6 +52,9 @@ To achieve persistent cloud order tracking, the backend integrates asynchronousl
 ```
 Bharatbazaar/
 │
+├── docs/                            # Production web bundle deployed live on GitHub Pages
+│   ├── index.html                   # Interactive single-page application with Firebase Auth & RTDB
+│   └── images/                      # High-resolution optimized product assets
 ├── .gitignore                       # Specifies build artifacts and temporary files excluded from Git
 ├── Dockerfile                       # Multi-stage container recipe for cloud hosting (Render/Railway)
 ├── render.yaml                      # Cloud deployment blueprint configuration
@@ -106,6 +111,7 @@ Bharatbazaar/
 | **`Cart.java`** | `src/main/java/com/shopmart/model/` | **Business Logic & Collection Manager.** Manages an `ArrayList<CartItem>`. Implements core business logic: `addItem()`, `removeItem()`, `updateQuantity()`, `clear()`, `getSubtotal()`, `getShipping()` (₹49 or Free if order ≥ ₹499), `getTax()` (5% GST), and `getTotal()`. Computes free delivery progress metrics. |
 | **`ProductService.java`** | `src/main/java/com/shopmart/service/` | **Service Layer.** Maintains an in-memory catalog of 12 authentic Indian consumer products across diverse categories (Electronics, Fashion, Home & Kitchen, Grocery, Footwear, Accessories). Implements case-insensitive keyword searching and category filtering logic. |
 | **`FirebaseService.java`** | `src/main/java/com/shopmart/service/` | **Cloud Integration Service.** Reads connection parameters from `firebase-config.properties`. Uses `java.net.http.HttpClient` to asynchronously synchronize orders to Firebase Realtime Database via `PUT /orders/{orderNumber}.json`. Contains thread-safe in-memory caching and offline resilience mechanisms. |
+| **`docs/index.html`** | `docs/` | **Live Web Application (GitHub Pages).** Production single-page web app configured with Firebase Authentication and Realtime Database, responsive shopping cart, order placement, and live order tracking. |
 | **`styles.css`** | `src/main/resources/static/css/` | **Enterprise Stylesheet.** Provides corporate styling, CSS variables, CSS grid layouts for responsive cards, table design for cart and orders, clean progress bars, and modal styles. |
 | **`firebase-config.properties`** | Root Directory | **Configuration.** Stores Firebase Realtime Database URL and activation flags. |
 | **`run.bat` & `run.ps1`** | Root Directory | **Automation Scripts.** Automates `javac` compilation and starts the server with a single click. |
@@ -134,3 +140,14 @@ Bharatbazaar/
 
 5. **Asynchronous Concurrency**:
    - `CompletableFuture.runAsync()` is utilized in `FirebaseService` to ensure external cloud network latency never blocks the customer-facing HTTP response thread.
+
+---
+
+## 6. APPLICATION ENDPOINTS & LIVE ACCESS
+
+* **Live Deployed Storefront:** [https://bshravani-11.github.io/Bharatbazaar](https://bshravani-11.github.io/Bharatbazaar)
+* **Product Catalog:** [https://bshravani-11.github.io/Bharatbazaar#catalog](https://bshravani-11.github.io/Bharatbazaar#catalog)
+* **Shopping Cart View:** [https://bshravani-11.github.io/Bharatbazaar#cart](https://bshravani-11.github.io/Bharatbazaar#cart)
+* **Cash on Delivery Checkout:** [https://bshravani-11.github.io/Bharatbazaar#checkout](https://bshravani-11.github.io/Bharatbazaar#checkout)
+* **Order History & Realtime Tracking:** [https://bshravani-11.github.io/Bharatbazaar#orders](https://bshravani-11.github.io/Bharatbazaar#orders)
+* **Customer Sign In Portal:** [https://bshravani-11.github.io/Bharatbazaar#login](https://bshravani-11.github.io/Bharatbazaar#login)

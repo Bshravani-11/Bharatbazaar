@@ -1,6 +1,9 @@
 # BharatBazaar — Enterprise Java E-Commerce Platform
 
-A professional, full-featured Indian E-Commerce and Shopping Cart web application developed in **Pure Java 17** with built-in HTTP networking, modern HTML5/CSS3 frontend with SVG iconography, and real-time cloud data persistence backed by **Firebase Realtime Database**.
+> 🌐 **Live Deployed Website**: [https://bshravani-11.github.io/Bharatbazaar](https://bshravani-11.github.io/Bharatbazaar)  
+> 📦 **GitHub Repository**: [https://github.com/Bshravani-11/Bharatbazaar](https://github.com/Bshravani-11/Bharatbazaar)
+
+A professional, full-featured Indian E-Commerce and Shopping Cart web application with modern HTML5/CSS3 frontend, SVG vector iconography, user authentication, and real-time cloud data persistence backed by **Firebase Realtime Database**.
 
 ---
 
@@ -78,35 +81,33 @@ Bharatbazaar/
 run.bat
 ```
 
-The application will compile and launch the server on **http://localhost:8080**.
+The application will automatically compile and launch the server in your default browser.
 
 ---
 
-## ☁️ How to Deploy Live (Free Cloud Hosting via GitHub)
+## ☁️ Live Deployment
 
-Because this application includes a full-stack **Java backend** and **HTTP server** (not just static HTML), GitHub Pages alone cannot run the Java virtual machine. 
+### 1. GitHub Pages (Active Live Deployment)
+The storefront frontend is bundled and deployed live directly via **GitHub Pages**:
+- **Live URL**: [https://bshravani-11.github.io/Bharatbazaar](https://bshravani-11.github.io/Bharatbazaar)
+- Includes live Firebase Authentication (Email/Password & Google Sign-In) and real-time cloud data storage via Firebase Realtime Database.
 
-To deploy it live with a public URL (e.g. `https://bharatbazaar.onrender.com`), use **Render.com** (100% Free, connects directly to your GitHub repo):
-
-### Step-by-Step Deployment on Render:
-1. Open **[Render.com](https://render.com/)** and sign in with your GitHub account (`Bshravani-11`).
-2. Click **New +** > **Web Service**.
-3. Choose **Build and deploy from a Git repository** and select **`Bharatbazaar`**.
-4. Configure these simple settings:
-   - **Name**: `bharatbazaar`
-   - **Runtime**: `Docker` (Render will automatically detect the included `Dockerfile` and `render.yaml`)
-   - **Instance Type**: **Free**
-5. Click **Deploy Web Service**!
-6. Render will automatically compile the Java code, start the server, and give you a **Live Public URL** (e.g. `https://bharatbazaar.onrender.com`) that anyone can access from anywhere!
+### 2. Full Java Backend Cloud Hosting (Render / Docker)
+To host the full-stack pure Java backend server container in the cloud:
+1. Sign in to **[Render.com](https://render.com/)** with your GitHub account (`Bshravani-11`).
+2. Click **New +** > **Web Service** and connect the `Bharatbazaar` repository.
+3. Select **Docker** environment (Render detects the included `Dockerfile` and `render.yaml`).
+4. Choose the **Free** instance tier and click **Deploy Web Service**.
 
 ---
 
-## 🌐 Application Endpoints
+## 🌐 Live Application Endpoints
 
-- **Storefront**: [http://localhost:8080/](http://localhost:8080/)
-- **Shopping Cart**: [http://localhost:8080/cart](http://localhost:8080/cart)
-- **Order Checkout**: [http://localhost:8080/checkout](http://localhost:8080/checkout)
-- **Order Management System**: [http://localhost:8080/orders](http://localhost:8080/orders)
+- **Storefront & Catalog**: [https://bshravani-11.github.io/Bharatbazaar](https://bshravani-11.github.io/Bharatbazaar)
+- **Shopping Cart View**: [https://bshravani-11.github.io/Bharatbazaar#cart](https://bshravani-11.github.io/Bharatbazaar#cart)
+- **Order Checkout (COD)**: [https://bshravani-11.github.io/Bharatbazaar#checkout](https://bshravani-11.github.io/Bharatbazaar#checkout)
+- **Order History & Tracking**: [https://bshravani-11.github.io/Bharatbazaar#orders](https://bshravani-11.github.io/Bharatbazaar#orders)
+- **Customer Account Portal**: [https://bshravani-11.github.io/Bharatbazaar#login](https://bshravani-11.github.io/Bharatbazaar#login)
 
 ---
 
